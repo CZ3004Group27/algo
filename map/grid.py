@@ -1,8 +1,8 @@
 import logging
-import pygame
 
-from map.cell import Cell
 import constants
+import pygame
+from map.cell import Cell
 
 # This sets the margin between each Cell
 MARGIN = 2
@@ -155,13 +155,13 @@ class Grid(object):
         # Add/remove cell from dict of obstacles accordingly
         if cell.get_cell_status() == 3:
             if cell.get_obstacle().get_obstacle_id() not in self.obstacle_cells.keys():
-                self.obstacle_cells[cell.get_obstacle().get_obstacle_id()] = cell   # '1-12': cell()
+                self.obstacle_cells[cell.get_obstacle().get_obstacle_id()] = cell  # '1-12': cell()
         elif cell.get_cell_status() == 0:
-            key_to_remove = str(cell.get_xcoord()) + '-' + str(cell.get_ycoord())   # '1-12'
+            key_to_remove = str(cell.get_xcoord()) + '-' + str(cell.get_ycoord())  # '1-12'
             if key_to_remove in self.obstacle_cells.keys():
                 del self.obstacle_cells[key_to_remove]
         self.unset_obstacle_boundary_cells(cell)  # runs only for empty cell
-        self.set_starting_area_cells(cell)        # runs only for empty cell
+        self.set_starting_area_cells(cell)  # runs only for empty cell
         for r in range(self.grid_row):
             for c in range(self.grid_column):
                 a = self.get_cell(r, c)
@@ -215,7 +215,7 @@ class Grid(object):
             x, y = cell.get_xcoord() + 2, cell.get_ycoord() + 1  # right (top)
             if x >= 0 and y >= 0 and x <= 19 and y <= 19 and self.get_cell_by_xycoords(x, y).get_cell_status() != 3:
                 self.get_cell_by_xycoords(x, y).set_obstacle_boundary_status()
-            x, y = cell.get_xcoord() + 2, cell.get_ycoord()      # right
+            x, y = cell.get_xcoord() + 2, cell.get_ycoord()  # right
             if x >= 0 and y >= 0 and x <= 19 and y <= 19 and self.get_cell_by_xycoords(x, y).get_cell_status() != 3:
                 self.get_cell_by_xycoords(x, y).set_obstacle_boundary_status()
             x, y = cell.get_xcoord() + 2, cell.get_ycoord() - 1  # right (bot)
@@ -387,27 +387,38 @@ class Grid(object):
                                      [OUTER_MARGIN + (MARGIN + self.block_size) * column + MARGIN,
                                       OUTER_MARGIN + (MARGIN + self.block_size) * row + MARGIN,
                                       self.block_size,
-                                      2])
+                                      # 2
+                                      8  # change width of obstacle image line
+                                      ])
                 if cell.get_obstacle_direction() == constants.EAST:
                     pygame.draw.rect(screen,
                                      constants.RED,
-                                     [OUTER_MARGIN + (MARGIN + self.block_size) * column + MARGIN + 18,
-                                      OUTER_MARGIN + (MARGIN + self.block_size) * row + MARGIN,
-                                      2,
-                                      self.block_size])
+                                     [
+                                         # OUTER_MARGIN + (MARGIN + self.block_size) * column + MARGIN + 18,
+                                         # change starting point of obstacle image line
+                                         OUTER_MARGIN + (MARGIN + self.block_size) * column + MARGIN + 13,
+                                         OUTER_MARGIN + (MARGIN + self.block_size) * row + MARGIN,
+                                         # 2,
+                                         8,  # change width of obstacle image line
+                                         self.block_size])
                 if cell.get_obstacle_direction() == constants.SOUTH:
                     pygame.draw.rect(screen,
                                      constants.RED,
                                      [OUTER_MARGIN + (MARGIN + self.block_size) * column + MARGIN,
-                                      OUTER_MARGIN + (MARGIN + self.block_size) * row + MARGIN + 18,
+                                      # OUTER_MARGIN + (MARGIN + self.block_size) * row + MARGIN + 18,
+                                      # change starting point of obstacle image line
+                                      OUTER_MARGIN + (MARGIN + self.block_size) * row + MARGIN + 13,
                                       self.block_size,
-                                      2])
+                                      # 2
+                                      8  # change width of obstacle image line
+                                      ])
                 if cell.get_obstacle_direction() == constants.WEST:
                     pygame.draw.rect(screen,
                                      constants.RED,
                                      [OUTER_MARGIN + (MARGIN + self.block_size) * column + MARGIN,
                                       OUTER_MARGIN + (MARGIN + self.block_size) * row + MARGIN,
-                                      2,
+                                      # 2,
+                                      8,  # change width of obstacle image line
                                       self.block_size])
 
     def grid_to_pixel(self, pos):
