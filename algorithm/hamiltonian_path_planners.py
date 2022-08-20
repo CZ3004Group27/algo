@@ -6,17 +6,18 @@ Compute a list of sequences of nodes for a Hamiltonian path
 """
 
 import networkx as nx
-
+import itertools
+import numpy as np
 from enum import Enum
 class GraphPathPlannerType(Enum):
     GREEDY = "greedy"
-    SHORTEST = "shortest"
+    EXHAUSTIVE = "exhaustive"
 
 def get_graph_path_planner(planner_type: GraphPathPlannerType):
     if planner_type is GraphPathPlannerType.GREEDY:
         return GreedyHamiltonianPathPlanner
-    elif planner_type is GraphPathPlannerType.SHORTEST:
-        pass
+    elif planner_type is GraphPathPlannerType.EXHAUSTIVE:
+        return ExhaustiveHamiltonianPathPlanner
 
 class GreedyHamiltonianPathPlanner:
     def __init__(self, graph: nx.Graph, starting_node: int = 0):
@@ -42,6 +43,29 @@ class GreedyHamiltonianPathPlanner:
 
         return path, path_length
 
+class ExhaustiveHamiltonianPathPlanner:
+    """Compute shortest hamiltonian path for a complete graph by exhaustive search
+    """
+    def __init__(self, graph: nx.Graph, starting_node: int = 0):
+        self.graph = graph
+        self.starting_node = starting_node
+    def find_path(self):
+        num_nodes = len(G.nodes)
+        other_nodes = list(G.adj[self.starting_node])
+        shortest_length = np.infty
+        shortest_path = ()
+
+        for path in itertools.permutations(other_nodes):
+            path_length = sum(
+                (G[path[i]][path[i+1]]["weight"] for i in range(num_nodes - 2)),
+                start = G[self.starting_node][path[0]]["weight"])
+            if path_length < shortest_length:
+                shortest_path = path
+                shortest_length = path_length
+        shortest_path = [self.starting_node] + list(shortest_path)
+
+        return shortest_path, shortest_length
+
 # Unittest the algorithms on some small inputs
 if __name__ == "__main__":
     G = nx.Graph()
@@ -62,3 +86,8 @@ if __name__ == "__main__":
     path, path_length = greedy_planner.find_path()
     assert path == [0, 4, 2, 1, 3]
     assert path_length == 16
+
+    exhaustive_planner = ExhaustiveHamiltonianPathPlanner(G)
+    path, path_length = exhaustive_planner.find_path()
+    assert path == [0, 2, 4, 1, 3]
+    assert path_length == 14
