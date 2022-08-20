@@ -1,6 +1,7 @@
 # Editors
 .vscode/
 .idea/
+**/*.code-workspace
 
 # User-specific stuff
 .idea/**/workspace.xml
