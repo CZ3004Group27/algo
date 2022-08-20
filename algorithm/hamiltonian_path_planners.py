@@ -9,20 +9,24 @@ import networkx as nx
 import itertools
 import numpy as np
 from enum import Enum
-class GraphPathPlannerType(Enum):
-    GREEDY = "greedy"
-    EXHAUSTIVE = "exhaustive"
+import abc
 
-def get_graph_path_planner(planner_type: GraphPathPlannerType):
-    if planner_type is GraphPathPlannerType.GREEDY:
-        return GreedyHamiltonianPathPlanner
-    elif planner_type is GraphPathPlannerType.EXHAUSTIVE:
-        return ExhaustiveHamiltonianPathPlanner
-
-class GreedyHamiltonianPathPlanner:
+class AbstractHamiltonianPathPlanner(metaclass=abc.ABCMeta):
     def __init__(self, graph: nx.Graph, starting_node: int = 0):
+        """Initialize the path Planner
+
+        Args:
+            graph: complete graph, with edge weights
+            starting_node: the node to start from"""
         self.graph = graph
         self.starting_node = starting_node
+
+    @abc.abstractmethod
+    def find_path(self):
+        """Return list of nodes in Hamiltonian path and length of that path"""
+        return
+
+class GreedyHamiltonianPathPlanner(AbstractHamiltonianPathPlanner):
     def find_path(self):
         unvisited = set(self.graph.nodes)
 
@@ -43,12 +47,9 @@ class GreedyHamiltonianPathPlanner:
 
         return path, path_length
 
-class ExhaustiveHamiltonianPathPlanner:
+class ExhaustiveHamiltonianPathPlanner(AbstractHamiltonianPathPlanner):
     """Compute shortest hamiltonian path for a complete graph by exhaustive search
     """
-    def __init__(self, graph: nx.Graph, starting_node: int = 0):
-        self.graph = graph
-        self.starting_node = starting_node
     def find_path(self):
         num_nodes = len(G.nodes)
         other_nodes = list(G.adj[self.starting_node])
@@ -65,6 +66,17 @@ class ExhaustiveHamiltonianPathPlanner:
         shortest_path = [self.starting_node] + list(shortest_path)
 
         return shortest_path, shortest_length
+
+class HamiltonianPathPlannerType(Enum):
+    GREEDY = "greedy"
+    EXHAUSTIVE = "exhaustive"
+
+def get_graph_path_planner(planner_type: HamiltonianPathPlannerType
+        ) -> AbstractHamiltonianPathPlanner:
+    if planner_type is HamiltonianPathPlannerType.GREEDY:
+        return GreedyHamiltonianPathPlanner
+    elif planner_type is HamiltonianPathPlannerType.EXHAUSTIVE:
+        return ExhaustiveHamiltonianPathPlanner
 
 # Unittest the algorithms on some small inputs
 if __name__ == "__main__":
@@ -91,3 +103,8 @@ if __name__ == "__main__":
     path, path_length = exhaustive_planner.find_path()
     assert path == [0, 2, 4, 1, 3]
     assert path_length == 14
+
+    assert get_graph_path_planner(
+        HamiltonianPathPlannerType.GREEDY) == GreedyHamiltonianPathPlanner
+    assert get_graph_path_planner(
+        HamiltonianPathPlannerType.EXHAUSTIVE) == ExhaustiveHamiltonianPathPlanner
