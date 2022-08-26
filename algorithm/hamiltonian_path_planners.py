@@ -5,11 +5,13 @@
 Compute a list of sequences of nodes for a Hamiltonian path
 """
 
-import networkx as nx
-import itertools
-import numpy as np
-from enum import Enum
 import abc
+import itertools
+from enum import Enum
+
+import networkx as nx
+import numpy as np
+
 
 class AbstractHamiltonianPathPlanner(metaclass=abc.ABCMeta):
     def __init__(self, graph: nx.Graph, starting_node: int = 0):
@@ -26,6 +28,7 @@ class AbstractHamiltonianPathPlanner(metaclass=abc.ABCMeta):
         """Return list of nodes in Hamiltonian path and length of that path"""
         return
 
+
 class GreedyHamiltonianPathPlanner(AbstractHamiltonianPathPlanner):
     def find_path(self):
         unvisited = set(self.graph.nodes)
@@ -38,7 +41,7 @@ class GreedyHamiltonianPathPlanner(AbstractHamiltonianPathPlanner):
 
         while unvisited:
             next_node = min(unvisited, key=
-                lambda node: self.graph[current_node][node]["weight"])
+            lambda node: self.graph[current_node][node]["weight"])
 
             path_length += self.graph[current_node][next_node]["weight"]
             current_node = next_node
@@ -47,19 +50,21 @@ class GreedyHamiltonianPathPlanner(AbstractHamiltonianPathPlanner):
 
         return path, path_length
 
+
 class ExhaustiveHamiltonianPathPlanner(AbstractHamiltonianPathPlanner):
     """Compute shortest hamiltonian path for a complete graph by exhaustive search
     """
+
     def find_path(self):
-        num_nodes = len(G.nodes)
-        other_nodes = list(G.adj[self.starting_node])
+        num_nodes = len(self.graph.nodes)
+        other_nodes = list(self.graph.adj[self.starting_node])
         shortest_length = np.infty
         shortest_path = ()
 
         for path in itertools.permutations(other_nodes):
             path_length = sum(
-                (G[path[i]][path[i+1]]["weight"] for i in range(num_nodes - 2)),
-                start = G[self.starting_node][path[0]]["weight"])
+                (self.graph[path[i]][path[i + 1]]["weight"] for i in range(num_nodes - 2)),
+                start=self.graph[self.starting_node][path[0]]["weight"])
             if path_length < shortest_length:
                 shortest_path = path
                 shortest_length = path_length
@@ -67,16 +72,19 @@ class ExhaustiveHamiltonianPathPlanner(AbstractHamiltonianPathPlanner):
 
         return shortest_path, shortest_length
 
+
 class HamiltonianPathPlannerType(Enum):
     GREEDY = "greedy"
     EXHAUSTIVE = "exhaustive"
 
+
 def get_graph_path_planner(planner_type: HamiltonianPathPlannerType
-        ) -> AbstractHamiltonianPathPlanner:
+                           ) -> AbstractHamiltonianPathPlanner:
     if planner_type is HamiltonianPathPlannerType.GREEDY:
         return GreedyHamiltonianPathPlanner
     elif planner_type is HamiltonianPathPlannerType.EXHAUSTIVE:
         return ExhaustiveHamiltonianPathPlanner
+
 
 # Unittest the algorithms on some small inputs
 if __name__ == "__main__":
