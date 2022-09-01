@@ -1,17 +1,18 @@
-
-import os
-import constants
-
-import threading
-from communication.comms import AlgoClient
-from map.grid import Grid
-from interface.panel import Panel
-from robot.robot import Robot
-from algorithm.astar import AStar
-from algorithm.path_planning import PathPlan
-import pygame
 import logging
+import os
 import queue
+import threading
+
+import constants
+import pygame
+from algorithm.astar import AStar
+from algorithm.astar_hamiltonian import AStarHamiltonian
+from algorithm.hamiltonian_path_planners import ExhaustiveHamiltonianPathPlanner
+from algorithm.path_planning import PathPlan
+from communication.comms import AlgoClient
+from interface.panel import Panel
+from map.grid import Grid
+from robot.robot import Robot
 
 # Set the HEIGHT and WIDTH of the screen
 WINDOW_SIZE = [960, 660]
@@ -38,6 +39,10 @@ class Simulator:
         self.astar = None
         # Path planner class
         self.path_planner = None
+        # Astar hamiltonian class
+        self.astar_hamiltonian = None
+        # Hamiltonian path planner class
+        self.hamiltonian_path_planner = None
 
         # Initialise 20 by 20 Grid
         self.grid = Grid(20, 20, 20)
@@ -86,8 +91,8 @@ class Simulator:
                 except queue.Empty:  # raised when queue is empty
                     continue
                 if isinstance(callback, list):
-                        print(callback)
-                        callback[0](callback[1])
+                    print(callback)
+                    callback[0](callback[1])
                 else:
                     callback()
 
@@ -104,7 +109,7 @@ class Simulator:
                         callback[0](callback[1])
                     else:
                         callback()
-                
+
                 for event in pygame.event.get():
                     if event.type == pygame.QUIT:
                         done = True
@@ -119,9 +124,9 @@ class Simulator:
 
                         else:  # otherwise, area clicked is outside of grid
                             self.check_button_clicked(pos)
-                
+
                 # Limit to 20 frames per second
-                now = pygame.time.get_ticks()/1000
+                now = pygame.time.get_ticks() / 1000
                 if now - self.startTime > 1 / constants.FPS:
                     self.startTime = now
                     self.root.display.flip()
@@ -135,7 +140,7 @@ class Simulator:
         Methods that update the UI must be passed into self.callback_queue for running in the main UI thread
         Running UI updating methods in a worker thread will cause a flashing effect as both threads attempt to update the UI
         """
-        
+
         while constants.RPI_CONNECTED:
             try:
                 txt = self.comms.recv()
@@ -163,7 +168,8 @@ class Simulator:
                         print(robot_params)
                         robot_x, robot_y, robot_dir = int(robot_params[1]), int(robot_params[2]), int(robot_params[3])
 
-                        self.callback_queue.put([self.car.update_robot, [robot_dir, self.grid.grid_to_pixel((robot_x, robot_y))]])
+                        self.callback_queue.put(
+                            [self.car.update_robot, [robot_dir, self.grid.grid_to_pixel((robot_x, robot_y))]])
                         self.callback_queue.put(self.car.redraw_car)
 
                         # Create obstacles given parameters
@@ -178,7 +184,7 @@ class Simulator:
                         self.callback_queue.put(self.car.redraw_car)
                         print("[AND] Doing path calculation...")
                         self.callback_queue.put(self.start_button_clicked)
-                        
+
                     elif command == "START" and task == "PATH":  # Week 9 Task
                         pass
 
@@ -196,7 +202,8 @@ class Simulator:
                         robot_x = new_robot_pos_split[0]
                         robot_y = new_robot_pos_split[1]
                         robot_dir = new_robot_pos_split[2]
-                        self.callback_queue.put([self.path_planner.send_to_rpi_recalculated, [robot_x, robot_y, robot_dir]])
+                        self.callback_queue.put(
+                            [self.path_planner.send_to_rpi_recalculated, [robot_x, robot_y, robot_dir]])
 
             except IndexError:
                 self.comms.send("Invalid command: " + txt)
@@ -255,17 +262,27 @@ class Simulator:
     def start_button_clicked(self):
         print("START button clicked!")
 
-        # Get fastest route
+        # Get fastest route (currently not using this)
         self.astar = AStar(self.grid, self.car.grid_x, self.car.grid_y)
-        fastest_route = self.astar.get_astar_route()
-        logging.info("Astar route: " + str(fastest_route))
-        optimized_fastest_route = self.grid.get_optimized_target_locations(fastest_route)
-        self.car.optimized_target_locations = optimized_fastest_route[1:]
-        logging.info("Optimized Astar route: " + str(optimized_fastest_route))
+        # fastest_route = self.astar.get_astar_route()
+        # logging.info("Astar route: " + str(fastest_route))
 
-        # Path finding
-        self.path_planner = PathPlan(self, self.grid, self.car, optimized_fastest_route)
-        self.path_planner.start_robot()
+        # Get fastest route using AStar Hamiltonian
+        if len(self.grid.get_target_locations()) != 0:
+            self.astar_hamiltonian = AStarHamiltonian(self.grid, self.car.grid_x, self.car.grid_y)
+            graph = self.astar_hamiltonian.create_graph()
+            self.hamiltonian_path_planner = ExhaustiveHamiltonianPathPlanner(graph, "start")
+            shortest_path, path_length = self.hamiltonian_path_planner.find_path()
+            fastest_route = self.astar_hamiltonian.convert_shortest_path_to_ordered_targets(shortest_path)
+            logging.info("Astar route: " + str(fastest_route))
+
+            optimized_fastest_route = self.grid.get_optimized_target_locations(fastest_route)
+            self.car.optimized_target_locations = optimized_fastest_route[1:]
+            logging.info("Optimized Astar route: " + str(optimized_fastest_route))
+
+            # Path finding
+            self.path_planner = PathPlan(self, self.grid, self.car, optimized_fastest_route)
+            self.path_planner.start_robot()
 
         # if constants.RPI_CONNECTED:
         #     self.path_planner.send_to_rpi()
@@ -273,4 +290,3 @@ class Simulator:
     def reset_button_clicked(self):
         self.grid.reset(self.screen)
         self.car.reset()
-
