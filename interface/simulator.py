@@ -268,20 +268,21 @@ class Simulator:
         # logging.info("Astar route: " + str(fastest_route))
 
         # Get fastest route using AStar Hamiltonian
-        self.astar_hamiltonian = AStarHamiltonian(self.grid, self.car.grid_x, self.car.grid_y)
-        graph = self.astar_hamiltonian.create_graph()
-        self.hamiltonian_path_planner = ExhaustiveHamiltonianPathPlanner(graph, "start")
-        shortest_path, path_length = self.hamiltonian_path_planner.find_path()
-        fastest_route = self.astar_hamiltonian.convert_shortest_path_to_ordered_targets(shortest_path)
-        logging.info("Astar route: " + str(fastest_route))
+        if len(self.grid.get_target_locations()) != 0:
+            self.astar_hamiltonian = AStarHamiltonian(self.grid, self.car.grid_x, self.car.grid_y)
+            graph = self.astar_hamiltonian.create_graph()
+            self.hamiltonian_path_planner = ExhaustiveHamiltonianPathPlanner(graph, "start")
+            shortest_path, path_length = self.hamiltonian_path_planner.find_path()
+            fastest_route = self.astar_hamiltonian.convert_shortest_path_to_ordered_targets(shortest_path)
+            logging.info("Astar route: " + str(fastest_route))
 
-        optimized_fastest_route = self.grid.get_optimized_target_locations(fastest_route)
-        self.car.optimized_target_locations = optimized_fastest_route[1:]
-        logging.info("Optimized Astar route: " + str(optimized_fastest_route))
+            optimized_fastest_route = self.grid.get_optimized_target_locations(fastest_route)
+            self.car.optimized_target_locations = optimized_fastest_route[1:]
+            logging.info("Optimized Astar route: " + str(optimized_fastest_route))
 
-        # Path finding
-        self.path_planner = PathPlan(self, self.grid, self.car, optimized_fastest_route)
-        self.path_planner.start_robot()
+            # Path finding
+            self.path_planner = PathPlan(self, self.grid, self.car, optimized_fastest_route)
+            self.path_planner.start_robot()
 
         # if constants.RPI_CONNECTED:
         #     self.path_planner.send_to_rpi()

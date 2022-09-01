@@ -13,14 +13,7 @@ from algorithm.astar import AStar
 class Node(object):
     def __init__(self, image_id):
         self.image_id = image_id
-
-
-class Edge(object):
-    def __init__(self, id1, id2, cost):
-        self.id1 = id1
-        self.id2 = id2
-        self.cost = cost
-
+        
 
 class AStarHamiltonian(object):
     def __init__(self, grid, start_cell_x, start_cell_y):
