@@ -408,7 +408,7 @@ class Robot(object):
         if constants.IS_CHECKING:
             return
         self.redraw_car()
-    
+
 
     def check_if_turned(self, initial_angle, final_pixel_pos):
         if constants.IS_CHECKING:

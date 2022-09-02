@@ -24,7 +24,8 @@ def main():
         constants.CENTER_ON_OBS = True
         print("Pathing will center on obstacle")
     x = Simulator()
-    
+    x.run()
+
 
 
 if __name__ == '__main__':
