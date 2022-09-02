@@ -48,7 +48,7 @@ class Grid(object):
     def get_cell(self, row, column):
         return self.cells[row][column]
 
-    def get_cell_by_xycoords(self, x, y):
+    def get_cell_by_xycoords(self, x, y) -> Cell:
         column = x
         row = 19 - y
         return self.cells[row][column]
@@ -184,136 +184,50 @@ class Grid(object):
                      + "," + str(row) + "; Grid coordinates: " + str(cell.get_xcoord()) + " " + str(cell.get_ycoord())
                      + "; Direction: " + str(cell.get_obstacle_direction()))
 
-    def set_obstacle_boundary_cells(self, cell):
-        if cell.get_cell_status()  == CellStatus.OBS:
-            # Set cells around obstacle as boundary
-            x, y = cell.get_xcoord() + 1, cell.get_ycoord() + 1  # top right
-            if x >= 0 and y >= 0 and x <= 19 and y <= 19 and self.get_cell_by_xycoords(x, y).get_cell_status() != CellStatus.OBS:
-                self.get_cell_by_xycoords(x, y).set_obstacle_boundary_status()
-            x, y = cell.get_xcoord() + 1, cell.get_ycoord()  # right
-            if x >= 0 and y >= 0 and x <= 19 and y <= 19 and self.get_cell_by_xycoords(x, y).get_cell_status() != CellStatus.OBS:
-                self.get_cell_by_xycoords(x, y).set_obstacle_boundary_status()
-            x, y = cell.get_xcoord() + 1, cell.get_ycoord() - 1  # bottom right
-            if x >= 0 and y >= 0 and x <= 19 and y <= 19 and self.get_cell_by_xycoords(x, y).get_cell_status() != CellStatus.OBS:
-                self.get_cell_by_xycoords(x, y).set_obstacle_boundary_status()
-            x, y = cell.get_xcoord(), cell.get_ycoord() + 1  # top
-            if x >= 0 and y >= 0 and x <= 19 and y <= 19 and self.get_cell_by_xycoords(x, y).get_cell_status() != CellStatus.OBS:
-                self.get_cell_by_xycoords(x, y).set_obstacle_boundary_status()
-            x, y = cell.get_xcoord(), cell.get_ycoord() - 1  # bottom
-            if x >= 0 and y >= 0 and x <= 19 and y <= 19 and self.get_cell_by_xycoords(x, y).get_cell_status() != CellStatus.OBS:
-                self.get_cell_by_xycoords(x, y).set_obstacle_boundary_status()
-            x, y = cell.get_xcoord() - 1, cell.get_ycoord() + 1  # top left
-            if x >= 0 and y >= 0 and x <= 19 and y <= 19 and self.get_cell_by_xycoords(x, y).get_cell_status() != CellStatus.OBS:
-                self.get_cell_by_xycoords(x, y).set_obstacle_boundary_status()
-            x, y = cell.get_xcoord() - 1, cell.get_ycoord()  # left
-            if x >= 0 and y >= 0 and x <= 19 and y <= 19 and self.get_cell_by_xycoords(x, y).get_cell_status() != CellStatus.OBS:
-                self.get_cell_by_xycoords(x, y).set_obstacle_boundary_status()
-            x, y = cell.get_xcoord() - 1, cell.get_ycoord() - 1  # bottom left
-            if x >= 0 and y >= 0 and x <= 19 and y <= 19 and self.get_cell_by_xycoords(x, y).get_cell_status() != CellStatus.OBS:
-                self.get_cell_by_xycoords(x, y).set_obstacle_boundary_status()
+    def get_boundary_cells_coords(self, cell: Cell):
+        """Return a list of coordinates [x_coord, y_coord] of the cells
+        surrounding a given cell, within a 2 cell radius (1 for diagonal)."""
+        x, y = cell.get_xcoord(), cell.get_ycoord()
+        boundary_cells = [
+                            [x - 1, y + 2], [x, y + 2], [x + 1, y + 2],
+            [x - 2, y + 1], [x - 1, y + 1], [x, y + 1], [x + 1, y + 1], [x + 2, y + 1],
+            [x - 2, y    ], [x - 1, y    ],             [x + 1, y    ], [x + 2, y    ],
+            [x - 2, y - 1], [x - 1, y - 1], [x, y - 1], [x + 1, y - 1], [x + 2, y - 1],
+                            [x - 1, y - 2], [x, y - 2], [x + 1, y - 2],
+        ]
+        return boundary_cells
 
-            # Extend boundary by 2 squares
-            x, y = cell.get_xcoord() + 1, cell.get_ycoord() + 2  # top (right)
-            if x >= 0 and y >= 0 and x <= 19 and y <= 19 and self.get_cell_by_xycoords(x, y).get_cell_status() != CellStatus.OBS:
-                self.get_cell_by_xycoords(x, y).set_obstacle_boundary_status()
-            x, y = cell.get_xcoord() - 1, cell.get_ycoord() + 2  # top (left)
-            if x >= 0 and y >= 0 and x <= 19 and y <= 19 and self.get_cell_by_xycoords(x, y).get_cell_status() != CellStatus.OBS:
-                self.get_cell_by_xycoords(x, y).set_obstacle_boundary_status()
-            x, y = cell.get_xcoord() + 2, cell.get_ycoord() + 1  # right (top)
-            if x >= 0 and y >= 0 and x <= 19 and y <= 19 and self.get_cell_by_xycoords(x, y).get_cell_status() != CellStatus.OBS:
-                self.get_cell_by_xycoords(x, y).set_obstacle_boundary_status()
-            x, y = cell.get_xcoord() + 2, cell.get_ycoord()  # right
-            if x >= 0 and y >= 0 and x <= 19 and y <= 19 and self.get_cell_by_xycoords(x, y).get_cell_status() != CellStatus.OBS:
-                self.get_cell_by_xycoords(x, y).set_obstacle_boundary_status()
-            x, y = cell.get_xcoord() + 2, cell.get_ycoord() - 1  # right (bot)
-            if x >= 0 and y >= 0 and x <= 19 and y <= 19 and self.get_cell_by_xycoords(x, y).get_cell_status() != CellStatus.OBS:
-                self.get_cell_by_xycoords(x, y).set_obstacle_boundary_status()
-            x, y = cell.get_xcoord() + 1, cell.get_ycoord() - 2  # bottom (right)
-            if x >= 0 and y >= 0 and x <= 19 and y <= 19 and self.get_cell_by_xycoords(x, y).get_cell_status() != CellStatus.OBS:
-                self.get_cell_by_xycoords(x, y).set_obstacle_boundary_status()
-            x, y = cell.get_xcoord() - 1, cell.get_ycoord() - 2  # bottom (left)
-            if x >= 0 and y >= 0 and x <= 19 and y <= 19 and self.get_cell_by_xycoords(x, y).get_cell_status() != CellStatus.OBS:
-                self.get_cell_by_xycoords(x, y).set_obstacle_boundary_status()
-            x, y = cell.get_xcoord(), cell.get_ycoord() + 2  # top
-            if x >= 0 and y >= 0 and x <= 19 and y <= 19 and self.get_cell_by_xycoords(x, y).get_cell_status() != CellStatus.OBS:
-                self.get_cell_by_xycoords(x, y).set_obstacle_boundary_status()
-            x, y = cell.get_xcoord(), cell.get_ycoord() - 2  # bottom
-            if x >= 0 and y >= 0 and x <= 19 and y <= 19 and self.get_cell_by_xycoords(x, y).get_cell_status() != CellStatus.OBS:
-                self.get_cell_by_xycoords(x, y).set_obstacle_boundary_status()
-            x, y = cell.get_xcoord() - 2, cell.get_ycoord()  # left
-            if x >= 0 and y >= 0 and x <= 19 and y <= 19 and self.get_cell_by_xycoords(x, y).get_cell_status() != CellStatus.OBS:
-                self.get_cell_by_xycoords(x, y).set_obstacle_boundary_status()
-            x, y = cell.get_xcoord() - 2, cell.get_ycoord() + 1  # left (top)
-            if x >= 0 and y >= 0 and x <= 19 and y <= 19 and self.get_cell_by_xycoords(x, y).get_cell_status() != CellStatus.OBS:
-                self.get_cell_by_xycoords(x, y).set_obstacle_boundary_status()
-            x, y = cell.get_xcoord() - 2, cell.get_ycoord() - 1  # left (bottom)
-            if x >= 0 and y >= 0 and x <= 19 and y <= 19 and self.get_cell_by_xycoords(x, y).get_cell_status() != CellStatus.OBS:
+    def set_obstacle_boundary_cells(self, cell: Cell):
+        """For an obstacle cell, set the statuses of the cells around it to
+        boundary status"""
+        if cell.get_cell_status()  != CellStatus.OBS:
+            return
+
+        boundary_cells = self.get_boundary_cells_coords(cell)
+        # Set status of cells around obstacle as boundary
+        for [x, y] in boundary_cells:
+            if 0 <= x <= 19 and 0 <= y <= 19 and \
+                    self.get_cell_by_xycoords(x, y).get_cell_status() != CellStatus.OBS:
+
                 self.get_cell_by_xycoords(x, y).set_obstacle_boundary_status()
 
     def unset_obstacle_boundary_cells(self, cell):
-        if cell.get_cell_status()  == CellStatus.EMPTY:
-            # UNSET cells around removed obstacle as empty
-            x, y = cell.get_xcoord() + 1, cell.get_ycoord() + 1  # top right
-            if x >= 0 and y >= 0 and x <= 19 and y <= 19 and self.get_cell_by_xycoords(x, y).get_cell_status() != CellStatus.OBS:
-                self.get_cell_by_xycoords(x, y).set_empty_status()
-            x, y = cell.get_xcoord() + 1, cell.get_ycoord()  # right
-            if x >= 0 and y >= 0 and x <= 19 and y <= 19 and self.get_cell_by_xycoords(x, y).get_cell_status() != CellStatus.OBS:
-                self.get_cell_by_xycoords(x, y).set_empty_status()
-            x, y = cell.get_xcoord() + 1, cell.get_ycoord() - 1  # bottom right
-            if x >= 0 and y >= 0 and x <= 19 and y <= 19 and self.get_cell_by_xycoords(x, y).get_cell_status() != CellStatus.OBS:
-                self.get_cell_by_xycoords(x, y).set_empty_status()
-            x, y = cell.get_xcoord(), cell.get_ycoord() + 1  # top
-            if x >= 0 and y >= 0 and x <= 19 and y <= 19 and self.get_cell_by_xycoords(x, y).get_cell_status() != CellStatus.OBS:
-                self.get_cell_by_xycoords(x, y).set_empty_status()
-            x, y = cell.get_xcoord(), cell.get_ycoord() - 1  # bottom
-            if x >= 0 and y >= 0 and x <= 19 and y <= 19 and self.get_cell_by_xycoords(x, y).get_cell_status() != CellStatus.OBS:
-                self.get_cell_by_xycoords(x, y).set_empty_status()
-            x, y = cell.get_xcoord() - 1, cell.get_ycoord() + 1  # top left
-            if x >= 0 and y >= 0 and x <= 19 and y <= 19 and self.get_cell_by_xycoords(x, y).get_cell_status() != CellStatus.OBS:
-                self.get_cell_by_xycoords(x, y).set_empty_status()
-            x, y = cell.get_xcoord() - 1, cell.get_ycoord()  # left
-            if x >= 0 and y >= 0 and x <= 19 and y <= 19 and self.get_cell_by_xycoords(x, y).get_cell_status() != CellStatus.OBS:
-                self.get_cell_by_xycoords(x, y).set_empty_status()
-            x, y = cell.get_xcoord() - 1, cell.get_ycoord() - 1  # bottom left
-            if x >= 0 and y >= 0 and x <= 19 and y <= 19 and self.get_cell_by_xycoords(x, y).get_cell_status() != CellStatus.OBS:
-                self.get_cell_by_xycoords(x, y).set_empty_status()
+        """When an obstacle cell is removed, unset the statuses of boundary
+        cells around it.
 
-            # Extended boundary
-            x, y = cell.get_xcoord() + 1, cell.get_ycoord() + 2  # top (right)
-            if x >= 0 and y >= 0 and x <= 19 and y <= 19 and self.get_cell_by_xycoords(x, y).get_cell_status() != CellStatus.OBS:
-                self.get_cell_by_xycoords(x, y).set_empty_status()
-            x, y = cell.get_xcoord() - 1, cell.get_ycoord() + 2  # top (left)
-            if x >= 0 and y >= 0 and x <= 19 and y <= 19 and self.get_cell_by_xycoords(x, y).get_cell_status() != CellStatus.OBS:
-                self.get_cell_by_xycoords(x, y).set_empty_status()
-            x, y = cell.get_xcoord() + 2, cell.get_ycoord() + 1  # right (top)
-            if x >= 0 and y >= 0 and x <= 19 and y <= 19 and self.get_cell_by_xycoords(x, y).get_cell_status() != CellStatus.OBS:
-                self.get_cell_by_xycoords(x, y).set_empty_status()
-            x, y = cell.get_xcoord() + 2, cell.get_ycoord()  # right
-            if x >= 0 and y >= 0 and x <= 19 and y <= 19 and self.get_cell_by_xycoords(x, y).get_cell_status() != CellStatus.OBS:
-                self.get_cell_by_xycoords(x, y).set_empty_status()
-            x, y = cell.get_xcoord() + 2, cell.get_ycoord() - 1  # right (bot)
-            if x >= 0 and y >= 0 and x <= 19 and y <= 19 and self.get_cell_by_xycoords(x, y).get_cell_status() != CellStatus.OBS:
-                self.get_cell_by_xycoords(x, y).set_empty_status()
-            x, y = cell.get_xcoord() + 1, cell.get_ycoord() - 2  # bottom (right)
-            if x >= 0 and y >= 0 and x <= 19 and y <= 19 and self.get_cell_by_xycoords(x, y).get_cell_status() != CellStatus.OBS:
-                self.get_cell_by_xycoords(x, y).set_empty_status()
-            x, y = cell.get_xcoord() - 1, cell.get_ycoord() - 2  # bottom (left)
-            if x >= 0 and y >= 0 and x <= 19 and y <= 19 and self.get_cell_by_xycoords(x, y).get_cell_status() != CellStatus.OBS:
-                self.get_cell_by_xycoords(x, y).set_empty_status()
-            x, y = cell.get_xcoord(), cell.get_ycoord() + 2  # top
-            if x >= 0 and y >= 0 and x <= 19 and y <= 19 and self.get_cell_by_xycoords(x, y).get_cell_status() != CellStatus.OBS:
-                self.get_cell_by_xycoords(x, y).set_empty_status()
-            x, y = cell.get_xcoord(), cell.get_ycoord() - 2  # bottom
-            if x >= 0 and y >= 0 and x <= 19 and y <= 19 and self.get_cell_by_xycoords(x, y).get_cell_status() != CellStatus.OBS:
-                self.get_cell_by_xycoords(x, y).set_empty_status()
-            x, y = cell.get_xcoord() - 2, cell.get_ycoord()  # left
-            if x >= 0 and y >= 0 and x <= 19 and y <= 19 and self.get_cell_by_xycoords(x, y).get_cell_status() != CellStatus.OBS:
-                self.get_cell_by_xycoords(x, y).set_empty_status()
-            x, y = cell.get_xcoord() - 2, cell.get_ycoord() + 1  # left (top)
-            if x >= 0 and y >= 0 and x <= 19 and y <= 19 and self.get_cell_by_xycoords(x, y).get_cell_status() != CellStatus.OBS:
-                self.get_cell_by_xycoords(x, y).set_empty_status()
-            x, y = cell.get_xcoord() - 2, cell.get_ycoord() - 1  # left (bottom)
-            if x >= 0 and y >= 0 and x <= 19 and y <= 19 and self.get_cell_by_xycoords(x, y).get_cell_status() != CellStatus.OBS:
+        Note that this function does not take into account if these boundary
+        cells also belong to another obstacle. The best thing to do after unset
+        all the boundary of removed obstacle cells is to set boundary for all
+        the remaining obstacle cells."""
+        if cell.get_cell_status()  != CellStatus.EMPTY:
+            return
+
+        boundary_cells = self.get_boundary_cells_coords(cell)
+        # Unset status of cells around obstacle
+        for [x, y] in boundary_cells:
+            if 0 <= x <= 19 and 0 <= y <= 19 and \
+                    self.get_cell_by_xycoords(x, y).get_cell_status() != CellStatus.OBS:
+
                 self.get_cell_by_xycoords(x, y).set_empty_status()
 
     def set_starting_area_cells(self, cell):
