@@ -47,14 +47,14 @@ class Simulator:
 
         # Initialise 20 by 20 Grid
         self.grid = Grid(20, 20, 20)
-        # self.grid.draw_grid(self.screen)
+        # self.grid.update_grid(self.screen)
         # Outline Grid
         self.grid_surface = self.root.Surface((442, 442))
         self.grid_surface.fill(constants.BLACK)
         if not constants.HEADLESS:
             self.screen.blit(self.grid_surface, (120, 120))
         # Draw the grid
-        self.grid.draw_grid(self.screen)
+        self.grid.update_grid(self.screen)
 
         # Initialise side panel with buttons
         self.panel = Panel(self.screen)
@@ -126,7 +126,7 @@ class Simulator:
                             constants.min_pixel_pos_y < pos[1] < constants.max_pixel_pos_y
                         ):  # if area clicked is within grid
                             self.grid.grid_clicked(pos[0], pos[1])
-                            # self.screen.blit(self.grid_surface, (120, 120))  # Redraw the grid outlines
+                            self.screen.blit(self.grid_surface, (120, 120))  # Redraw the grid outlines
                             self.grid.update_grid(self.screen)  # Update grid if obstacles added
                             self.car.draw_car()  # Redraw the car
 
