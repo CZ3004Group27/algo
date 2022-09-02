@@ -1,8 +1,8 @@
 import logging
 
-import constants
+from mdpalgo import constants
 import pygame
-from map.cell import Cell
+from mdpalgo.map.cell import Cell
 
 # This sets the margin between each Cell
 MARGIN = 2

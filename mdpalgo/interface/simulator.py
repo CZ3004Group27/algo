@@ -3,16 +3,16 @@ import os
 import queue
 import threading
 
-import constants
+from mdpalgo import constants
 import pygame
-from algorithm.astar import AStar
-from algorithm.astar_hamiltonian import AStarHamiltonian
-from algorithm.hamiltonian_path_planners import ExhaustiveHamiltonianPathPlanner
-from algorithm.path_planning import PathPlan
-from communication.comms import AlgoClient
-from interface.panel import Panel
-from map.grid import Grid
-from robot.robot import Robot
+from mdpalgo.algorithm.astar import AStar
+from mdpalgo.algorithm.astar_hamiltonian import AStarHamiltonian
+from mdpalgo.algorithm.hamiltonian_path_planners import ExhaustiveHamiltonianPathPlanner
+from mdpalgo.algorithm.path_planning import PathPlan
+from mdpalgo.communication.comms import AlgoClient
+from mdpalgo.interface.panel import Panel
+from mdpalgo.map.grid import Grid
+from mdpalgo.robot.robot import Robot
 import parse
 
 # Set the HEIGHT and WIDTH of the screen

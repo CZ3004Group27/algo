@@ -1,5 +1,5 @@
-from interface.buttons import Button
-import constants
+from mdpalgo.interface.buttons import Button
+from mdpalgo import constants
 
 
 class Panel(object):

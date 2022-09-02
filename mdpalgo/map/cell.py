@@ -5,7 +5,7 @@
 # 3 is obstacle
 # 4 is obstacle visited
 # 5 and above is path to take
-from map.obstacle import Obstacle
+from mdpalgo.map.obstacle import Obstacle
 
 
 class Cell:

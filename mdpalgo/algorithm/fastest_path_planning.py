@@ -1,6 +1,6 @@
 import numpy as np
 
-import constants
+from mdpalgo import constants
 
 
 class Node:

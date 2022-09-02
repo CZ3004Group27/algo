@@ -1,8 +1,8 @@
 import logging
 import argparse
-import constants
+from mdpalgo import constants
 
-from interface.simulator import Simulator
+from mdpalgo.interface.simulator import Simulator
 
 # Logging
 logging.basicConfig(level=logging.INFO)

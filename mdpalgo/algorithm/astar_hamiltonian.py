@@ -7,7 +7,7 @@ This script has the following main functions:
 
 import networkx as nx
 
-from algorithm.astar import AStar
+from mdpalgo.algorithm.astar import AStar
 
 
 class Node(object):

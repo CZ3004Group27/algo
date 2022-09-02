@@ -1,10 +1,10 @@
 import logging
-from robot.robot import BorderException, CheckingException
-from robot.robot import ObstacleException
-from robot.robot import ObstacleTurnException
-from algorithm.fastest_path_planning import search
-import constants
-from constants import BUFFER
+from mdpalgo.robot.robot import BorderException, CheckingException
+from mdpalgo.robot.robot import ObstacleException
+from mdpalgo.robot.robot import ObstacleTurnException
+from mdpalgo.algorithm.fastest_path_planning import search
+from mdpalgo import constants
+from mdpalgo.constants import BUFFER
 import itertools
 from random import randint
 
@@ -1534,7 +1534,7 @@ class PathPlan(object):
             self.robot_y = self.robot.get_grid_pos()[1]
             self.robot_direction = self.robot.get_angle_of_rotation()
 
-            
+
 
             # if no obstacle exceptions, can use hardcoded shortest path
             if self.check_movement_possible(self.target_x, self.target_y, self.robot_x, self.robot_y,
