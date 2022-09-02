@@ -1,8 +1,8 @@
 from mdpalgo.map.obstacle import Obstacle
-from enum import Enum, unique
+from enum import IntEnum, unique
 
 @unique
-class CellStatus(Enum):
+class CellStatus(IntEnum):
     EMPTY = 0 # empty
     START = 1 # starting area
     BOUNDARY = 2 # boundary area around obstacle
