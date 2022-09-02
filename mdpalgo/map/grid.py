@@ -10,6 +10,14 @@ MARGIN = 2
 # This is the margin around the top and left of the grids
 OUTER_MARGIN = 120
 
+COLOR_DICT = {
+    CellStatus.EMPTY: constants.WHITE,
+    CellStatus.START: constants.BLUE,
+    CellStatus.BOUNDARY: constants.LIGHT_RED,
+    CellStatus.OBS: constants.GREEN,
+    CellStatus.VISITED_OBS: constants.LIGHT_GREEN,
+    CellStatus.PATH: constants.GRAY,
+}
 
 class Grid(object):
 
@@ -20,6 +28,7 @@ class Grid(object):
         self.cells = [[0 for x in range(grid_column)] for y in range(grid_row)]
         self.cells_virtual = [[0 for x in range(grid_column)] for y in range(grid_row)]
         self.optimized_target_locations = None
+        self.obstacle_cells = {}
         self.reset_data()
 
     def reset_data(self):
@@ -37,7 +46,7 @@ class Grid(object):
     def reset(self, screen):
         """Reset both grid data and reflect this on the UI"""
         self.reset_data()
-        self.draw_grid(screen)
+        self.update_grid(screen)
 
     def get_block_size(self):
         return self.block_size
@@ -45,7 +54,7 @@ class Grid(object):
     def get_cells(self):
         return self.cells
 
-    def get_cell(self, row, column):
+    def get_cell(self, row, column) -> Cell:
         return self.cells[row][column]
 
     def get_cell_by_xycoords(self, x, y) -> Cell:
@@ -160,15 +169,14 @@ class Grid(object):
         cell = self.get_cell(row, column)
         cell.cell_clicked()
         # Add/remove cell from dict of obstacles accordingly
-        if cell.get_cell_status()  == CellStatus.OBS:
-            if cell.get_obstacle().get_obstacle_id() not in self.obstacle_cells.keys():
+        if cell.get_cell_status() == CellStatus.OBS:
+            if cell.get_obstacle().get_obstacle_id() not in self.obstacle_cells:
                 self.obstacle_cells[cell.get_obstacle().get_obstacle_id()] = cell  # '1-12': cell()
-        elif cell.get_cell_status()  == CellStatus.EMPTY:
+        elif cell.get_cell_status() == CellStatus.EMPTY:
             key_to_remove = str(cell.get_xcoord()) + '-' + str(cell.get_ycoord())  # '1-12'
-            if key_to_remove in self.obstacle_cells.keys():
-                del self.obstacle_cells[key_to_remove]
+            # remove the key if it exists, else does nothing
+            self.obstacle_cells.pop(key_to_remove, None)
         self.unset_obstacle_boundary_cells(cell)  # runs only for empty cell
-        self.set_starting_area_cells(cell)  # runs only for empty cell
         for r in range(self.grid_row):
             for c in range(self.grid_column):
                 a = self.get_cell(r, c)
@@ -206,8 +214,8 @@ class Grid(object):
         boundary_cells = self.get_boundary_cells_coords(cell)
         # Set status of cells around obstacle as boundary
         for [x, y] in boundary_cells:
-            if 0 <= x <= 19 and 0 <= y <= 19 and \
-                    self.get_cell_by_xycoords(x, y).get_cell_status() != CellStatus.OBS:
+            if 0 <= x <= 19 and 0 <= y <= 19 and self.get_cell_by_xycoords(
+                    x, y).get_cell_status() in [CellStatus.EMPTY, CellStatus.PATH]:
 
                 self.get_cell_by_xycoords(x, y).set_obstacle_boundary_status()
 
@@ -226,57 +234,11 @@ class Grid(object):
         # Unset status of cells around obstacle
         for [x, y] in boundary_cells:
             if 0 <= x <= 19 and 0 <= y <= 19 and \
-                    self.get_cell_by_xycoords(x, y).get_cell_status() != CellStatus.OBS:
-
+                    self.get_cell_by_xycoords(x, y).get_cell_status() == CellStatus.BOUNDARY:
                 self.get_cell_by_xycoords(x, y).set_empty_status()
-
-    def set_starting_area_cells(self, cell):
-        if cell.get_cell_status()  == CellStatus.EMPTY:
-            # Reset starting area cells
-            x, y = cell.get_xcoord() + 1, cell.get_ycoord() + 1  # top right
-            if 0 <= x < 4 and 0 <= y < 4:
-                self.get_cell_by_xycoords(x, y).set_starting_area_status()
-            x, y = cell.get_xcoord() + 1, cell.get_ycoord()  # right
-            if 0 <= x < 4 and 0 <= y < 4:
-                self.get_cell_by_xycoords(x, y).set_starting_area_status()
-            x, y = cell.get_xcoord() + 1, cell.get_ycoord() - 1  # bottom right
-            if 0 <= x < 4 and 0 <= y < 4:
-                self.get_cell_by_xycoords(x, y).set_starting_area_status()
-            x, y = cell.get_xcoord(), cell.get_ycoord() + 1  # top
-            if 0 <= x < 4 and 0 <= y < 4:
-                self.get_cell_by_xycoords(x, y).set_starting_area_status()
-            x, y = cell.get_xcoord(), cell.get_ycoord() - 1  # bottom
-            if 0 <= x < 4 and 0 <= y < 4:
-                self.get_cell_by_xycoords(x, y).set_starting_area_status()
-            x, y = cell.get_xcoord() - 1, cell.get_ycoord() + 1  # top left
-            if 0 <= x < 4 and 0 <= y < 4:
-                self.get_cell_by_xycoords(x, y).set_starting_area_status()
-            x, y = cell.get_xcoord() - 1, cell.get_ycoord()  # left
-            if 0 <= x < 4 and 0 <= y < 4:
-                self.get_cell_by_xycoords(x, y).set_starting_area_status()
-            x, y = cell.get_xcoord() - 1, cell.get_ycoord() - 1  # bottom left
-            if 0 <= x < 4 and 0 <= y < 4:
-                self.get_cell_by_xycoords(x, y).set_starting_area_status()
 
     def set_obstacle_as_visited(self, obstacle_cell):
         obstacle_cell.set_obstacle_visited_status()
-
-    def draw_grid(self, screen):
-        if constants.HEADLESS:
-            return
-        # Draw the grid
-        for row in range(20):
-            for column in range(20):
-                cell = self.cells[row][column]
-                color = constants.WHITE
-                if cell.get_cell_status()  == CellStatus.START:  # cell is part of starting area
-                    color = constants.BLUE
-                pygame.draw.rect(screen,
-                                 color,
-                                 [OUTER_MARGIN + (MARGIN + self.block_size) * column + MARGIN,
-                                  OUTER_MARGIN + (MARGIN + self.block_size) * row + MARGIN,
-                                  self.block_size,
-                                  self.block_size])
 
     def update_grid(self, screen):
         if constants.HEADLESS:
@@ -285,24 +247,18 @@ class Grid(object):
         for row in range(20):
             for column in range(20):
                 cell = self.get_cell(row, column)
-                color = constants.WHITE
-                if cell.get_cell_status()  == CellStatus.START:  # cell is part of starting area
-                    color = constants.BLUE
-                if cell.get_cell_status()  == CellStatus.BOUNDARY:  # cell is not an obstacle but is an obstacle boundary
-                    color = constants.LIGHT_RED
-                if cell.get_cell_status()  == CellStatus.OBS:  # cell has an obstacle
-                    color = constants.GREEN
-                if cell.get_cell_status()  == CellStatus.VISITED_OBS:  # obstacle cell has been visited
-                    color = constants.LIGHT_GREEN
-                if cell.get_cell_status()  == CellStatus.PATH:  # cell is part of path
-                    color = constants.GRAY
+                color = COLOR_DICT[cell.get_cell_status()]
                 pygame.draw.rect(screen,
                                  color,
                                  [OUTER_MARGIN + (MARGIN + self.block_size) * column + MARGIN,
                                   OUTER_MARGIN + (MARGIN + self.block_size) * row + MARGIN,
                                   self.block_size,
                                   self.block_size])
-                if cell.get_obstacle_direction() == constants.NORTH:
+
+                obstacle_direction = cell.get_obstacle_direction()
+                if obstacle_direction is None:
+                    continue
+                elif obstacle_direction == constants.NORTH:
                     pygame.draw.rect(screen,
                                      constants.RED,
                                      [OUTER_MARGIN + (MARGIN + self.block_size) * column + MARGIN,
@@ -311,7 +267,7 @@ class Grid(object):
                                       # 2
                                       8  # change width of obstacle image line
                                       ])
-                if cell.get_obstacle_direction() == constants.EAST:
+                elif obstacle_direction == constants.EAST:
                     pygame.draw.rect(screen,
                                      constants.RED,
                                      [
@@ -322,7 +278,7 @@ class Grid(object):
                                          # 2,
                                          8,  # change width of obstacle image line
                                          self.block_size])
-                if cell.get_obstacle_direction() == constants.SOUTH:
+                elif obstacle_direction == constants.SOUTH:
                     pygame.draw.rect(screen,
                                      constants.RED,
                                      [OUTER_MARGIN + (MARGIN + self.block_size) * column + MARGIN,
@@ -333,7 +289,7 @@ class Grid(object):
                                       # 2
                                       8  # change width of obstacle image line
                                       ])
-                if cell.get_obstacle_direction() == constants.WEST:
+                elif obstacle_direction == constants.WEST:
                     pygame.draw.rect(screen,
                                      constants.RED,
                                      [OUTER_MARGIN + (MARGIN + self.block_size) * column + MARGIN,
@@ -351,5 +307,3 @@ class Grid(object):
         x_grid = (pos[0] - 120) // (self.block_size + MARGIN)
         y_grid = 19 - ((pos[1] - 120) // (self.block_size + MARGIN))
         return [x_grid, y_grid]
-
-

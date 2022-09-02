@@ -47,14 +47,14 @@ class Simulator:
 
         # Initialise 20 by 20 Grid
         self.grid = Grid(20, 20, 20)
-        # self.grid.draw_grid(self.screen)
+        # self.grid.update_grid(self.screen)
         # Outline Grid
         self.grid_surface = self.root.Surface((442, 442))
         self.grid_surface.fill(constants.BLACK)
         if not constants.HEADLESS:
             self.screen.blit(self.grid_surface, (120, 120))
         # Draw the grid
-        self.grid.draw_grid(self.screen)
+        self.grid.update_grid(self.screen)
 
         # Initialise side panel with buttons
         self.panel = Panel(self.screen)

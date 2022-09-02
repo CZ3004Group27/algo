@@ -32,9 +32,14 @@ class Cell:
             self.status = CellStatus.EMPTY
 
     def create_obstacle(self, dir):
-        self.obstacle = Obstacle(self.x_coordinate, self.y_coordinate)
-        self.status = 3
-        self.obstacle.set_direction(dir)
+        """Create an obstacle and set the cell status accordingly.
+
+        Args:
+            dir: direction of the obstacle. If None, the default obstacle
+                direction will be chosen.
+        """
+        self.obstacle = Obstacle(self.x_coordinate, self.y_coordinate, dir)
+        self.status = CellStatus.OBS
 
     def set_obstacle_boundary_status(self):
         self.status = CellStatus.BOUNDARY
