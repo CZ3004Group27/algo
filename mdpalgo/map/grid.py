@@ -14,8 +14,8 @@ COLOR_DICT = {
     CellStatus.EMPTY: constants.WHITE,
     CellStatus.START: constants.BLUE,
     CellStatus.BOUNDARY: constants.LIGHT_RED,
-    CellStatus.OBS: constants.GREEN,
-    CellStatus.VISITED_OBS: constants.LIGHT_GREEN,
+    CellStatus.OBS: constants.BLACK,
+    CellStatus.VISITED_OBS: constants.GREEN,
     CellStatus.PATH: constants.GRAY,
 }
 
