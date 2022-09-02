@@ -1,5 +1,5 @@
 import pygame
-import constants
+from mdpalgo import constants
 
 
 class Button:

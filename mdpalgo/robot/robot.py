@@ -1,9 +1,9 @@
 import time
 from math import degrees
 from pygame.math import Vector2
-import constants
+from mdpalgo import constants
 import pygame
-from constants import BUFFER
+from mdpalgo.constants import BUFFER
 
 # This sets the margin between each Cell
 MARGIN = 2
