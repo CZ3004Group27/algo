@@ -126,7 +126,7 @@ class Simulator:
                             constants.min_pixel_pos_y < pos[1] < constants.max_pixel_pos_y
                         ):  # if area clicked is within grid
                             self.grid.grid_clicked(pos[0], pos[1])
-                            # self.screen.blit(self.grid_surface, (120, 120))  # Redraw the grid outlines
+                            self.screen.blit(self.grid_surface, (120, 120))  # Redraw the grid outlines
                             self.grid.update_grid(self.screen)  # Update grid if obstacles added
                             self.car.draw_car()  # Redraw the car
 

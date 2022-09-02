@@ -1,6 +1,7 @@
 import numpy as np
 
 from mdpalgo import constants
+from mdpalgo.map.cell import CellStatus
 
 
 class Node:
@@ -157,7 +158,7 @@ def search(maze, cost, start, end):
                 continue
 
             # Make sure walkable terrain
-            if maze[int(node_position[0])][int(node_position[1])] in [2, 3]:
+            if maze[int(node_position[0])][int(node_position[1])] in [CellStatus.BOUNDARY, CellStatus.OBS]:
                 continue
 
             # Create new node

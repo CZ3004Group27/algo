@@ -1,11 +1,14 @@
-# status enum:
-# 0 is empty
-# 1 is starting area
-# 2 is boundary area around obstacle
-# 3 is obstacle
-# 4 is obstacle visited
-# 5 and above is path to take
 from mdpalgo.map.obstacle import Obstacle
+from enum import Enum, unique
+
+@unique
+class CellStatus(Enum):
+    EMPTY = 0 # empty
+    START = 1 # starting area
+    BOUNDARY = 2 # boundary area around obstacle
+    OBS = 3 # obstacle
+    VISITED_OBS = 4 # obstacle visited
+    PATH = 5 # 5 and above is path to take
 
 
 class Cell:
@@ -21,12 +24,12 @@ class Cell:
             return
         if self.obstacle is None:
             self.obstacle = Obstacle(self.x_coordinate, self.y_coordinate)
-            self.status = 3
+            self.status = CellStatus.OBS
             return
         self.obstacle.obstacle_clicked()
         if self.obstacle.get_direction() is None:
             self.obstacle = None
-            self.status = 0
+            self.status = CellStatus.EMPTY
 
     def create_obstacle(self, dir):
         self.obstacle = Obstacle(self.x_coordinate, self.y_coordinate)
@@ -34,19 +37,19 @@ class Cell:
         self.obstacle.set_direction(dir)
 
     def set_obstacle_boundary_status(self):
-        self.status = 2
+        self.status = CellStatus.BOUNDARY
 
     def set_starting_area_status(self):
-        self.status = 1
+        self.status = CellStatus.START
 
     def set_empty_status(self):
-        self.status = 0
+        self.status = CellStatus.EMPTY
 
     def set_obstacle_visited_status(self):
-        self.status = 4
+        self.status = CellStatus.VISITED_OBS
 
     def set_path_status(self, num):
-        self.status = 5
+        self.status = CellStatus.PATH
 
     def get_obstacle(self):
         return self.obstacle
@@ -56,7 +59,7 @@ class Cell:
             return None
         return self.obstacle.get_direction()
 
-    def get_cell_status(self):
+    def get_cell_status(self) -> CellStatus:
         return self.status
 
     def get_xcoord(self):
