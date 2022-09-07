@@ -1481,6 +1481,72 @@ class PathPlan(object):
             #
             # self.reset_collection_of_movements()
 
+            print("ROBOT POS", self.collection_of_robot_pos) # debug: checking robot pos list
+            print("MOVEMENTS", self.collection_of_movements)
+            col,row = 0,0
+            i=0
+            previous_row, previous_col = 18, 1
+
+            for position in self.collection_of_robot_pos:
+                row, col = 19-int(position[1]), int(position[0]) # row = 19-y-coord, column = x-coord
+                # print(position, row, col)
+                robot_dir = position[2]
+
+                # if row or col out of boundary, ignore and go to next position
+                if row < 0 or row > 19 or col < 0 or col > 19:
+                    continue
+
+                # Set cell status as 5 for cell in position
+                self.grid.cells[row][col].set_path_status(5)
+
+                # Set cell status as 5 for cells which are part of turns
+                if previous_row != row and previous_col != col and i < len(self.collection_of_movements):
+                    # previous row > current row and movement == "FR"
+                    if previous_row > row and (self.collection_of_movements[i] == "FR"):
+                        for row_idx in range(row, previous_row):
+                            self.grid.cells[row_idx][previous_col].set_path_status(5)
+
+                        # previous col < current col
+                        if previous_col < col:
+                            for col_idx in range(previous_col, col):
+                                self.grid.cells[row][col_idx].set_path_status(5)
+
+                    # previous row > current row and movement == "FL"
+                    elif previous_row > row and (self.collection_of_movements[i] == "FL"):
+                        if robot_dir == 0:
+                            for row_idx in range(row, previous_row):
+                                self.grid.cells[row_idx][col].set_path_status(5)
+
+                            # previous col < current col
+                            if previous_col < col:
+                                for col_idx in range(previous_col, col):
+                                    self.grid.cells[previous_row][col_idx].set_path_status(5)
+
+                        if robot_dir == 90:
+                            for row_idx in range(row, previous_row):
+                                self.grid.cells[row_idx][previous_col].set_path_status(5)
+
+                            # previous col > current col
+                            if previous_col > col:
+                                for col_idx in range(col, previous_col):
+                                    self.grid.cells[row][col_idx].set_path_status(5)
+
+                    # previous row < current row and movement == "FR"
+                    elif previous_row < row and (i < len(self.collection_of_movements) and self.collection_of_movements[i] == "FR"):
+                        for row_idx in range(previous_row, row):
+                            self.grid.cells[row_idx][col].set_path_status(5)
+
+                        # previous col < current col
+                        if previous_col < col:
+                            for col_idx in range(previous_col, col):
+                                self.grid.cells[previous_row][col_idx].set_path_status(5)
+
+                # Colour rough route gray
+                self.robot.redraw_car()
+
+                previous_row, previous_col = row, col
+                i += 1
+
             # Move car 2 steps backwards for next move
             self.reset_collection_of_movements()
             self.reset_robot_pos_list()
