@@ -208,7 +208,7 @@ class Grid(object):
     def set_obstacle_boundary_cells(self, cell: Cell):
         """For an obstacle cell, set the statuses of the cells around it to
         boundary status"""
-        if cell.get_cell_status()  != CellStatus.OBS:
+        if cell.get_cell_status()  != CellStatus.OBS and cell.get_cell_status()  != CellStatus.VISITED_OBS:
             return
 
         boundary_cells = self.get_boundary_cells_coords(cell)
