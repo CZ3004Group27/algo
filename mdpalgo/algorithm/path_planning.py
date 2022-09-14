@@ -1532,7 +1532,7 @@ class PathPlan(object):
                                     self.grid.cells[row][col_idx].set_path_status(5)
 
                     # previous row < current row and movement == "FR"
-                    elif previous_row < row and (i < len(self.collection_of_movements) and self.collection_of_movements[i] == "FR"):
+                    elif previous_row < row and (self.collection_of_movements[i] == "FR"):
                         for row_idx in range(previous_row, row):
                             self.grid.cells[row_idx][col].set_path_status(5)
 
@@ -1540,6 +1540,17 @@ class PathPlan(object):
                         if previous_col < col:
                             for col_idx in range(previous_col, col):
                                 self.grid.cells[previous_row][col_idx].set_path_status(5)
+
+                    # previous row < current row and movement == "FL"
+                    elif previous_row < row and (self.collection_of_movements[i] == "FL"):
+                        if robot_dir == -90:
+                            for row_idx in range(previous_row, row):
+                                self.grid.cells[row_idx][previous_col].set_path_status(5)
+
+                            # previous col < current col
+                            if previous_col < col:
+                                for col_idx in range(previous_col, col):
+                                    self.grid.cells[row][col_idx].set_path_status(5)
 
                 # Colour rough route gray
                 self.robot.redraw_car()
