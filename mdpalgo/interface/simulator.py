@@ -85,36 +85,21 @@ class Simulator:
         # -------- Main Program Loop -----------
         if constants.HEADLESS:  # to simplify implementation, we use 2 threads even if headless
             print("Waiting to connect")
-            self.comms = AlgoClient()
-            self.comms.connect()
-            print("Connected!")
-            self.recv_thread = threading.Thread(target=self.receiving_process)
-            constants.RPI_CONNECTED = True
-            self.recv_thread.start()
+            self.start_algo_client()
             while True:
                 try:
-                    callback = self.callback_queue.get(False)  # doesn't block
+                    self.handle_worker_callbacks()
                 except queue.Empty:  # raised when queue is empty
                     continue
-                if isinstance(callback, list):
-                    print(callback)
-                    callback[0](callback[1])
-                else:
-                    callback()
 
         else:
             while not done:
                 # Check for callbacks from worker thread
                 while True:
                     try:
-                        callback = self.callback_queue.get(False)  # doesn't block
+                        self.handle_worker_callbacks()
                     except queue.Empty:  # raised when queue is empty
                         break
-                    if isinstance(callback, list):
-                        logging.info("Current callback: \n%s", callback)
-                        callback[0](callback[1])
-                    else:
-                        callback()
 
                 for event in pygame.event.get():
                     if event.type == pygame.QUIT:
@@ -141,6 +126,27 @@ class Simulator:
 
         # Be IDLE friendly. If you forget this line, the program will 'hang' on exit.
         self.root.quit()
+
+    def start_algo_client(self):
+        """Connect to RPi wifi server and start a thread to receive messages """
+        self.comms = AlgoClient()
+        self.comms.connect()
+        self.recv_thread = threading.Thread(target=self.receiving_process)
+        constants.RPI_CONNECTED = True
+        self.recv_thread.start()
+
+    def handle_worker_callbacks(self):
+        """Check for callbacks from worker thread and handle them
+
+        Raises:
+            queue.Empty if the callback queue is empty
+        """
+        callback = self.callback_queue.get(False)  # doesn't block
+        if isinstance(callback, list):
+            logging.info("Current callback: \n%s", callback)
+            callback[0](callback[1])
+        else:
+            callback()
 
     def receiving_process(self):
         """
