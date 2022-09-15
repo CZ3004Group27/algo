@@ -10,10 +10,10 @@ from mdpalgo.algorithm.astar_hamiltonian import AStarHamiltonian
 from mdpalgo.algorithm.hamiltonian_path_planners import ExhaustiveHamiltonianPathPlanner
 from mdpalgo.algorithm.path_planning import PathPlan
 from mdpalgo.communication.comms import AlgoClient
+from mdpalgo.communication.message_parser import MessageParser, MessageType, TaskType
 from mdpalgo.interface.panel import Panel
 from mdpalgo.map.grid import Grid
 from mdpalgo.robot.robot import Robot
-import parse
 
 # Set the HEIGHT and WIDTH of the screen
 WINDOW_SIZE = [960, 660]
@@ -74,9 +74,8 @@ class Simulator:
         # Draw the car
         self.car.draw_car()
 
-        # Pattern for messages from ANDROID
-        self.android_pattern = parse.compile("{command:w}/{task:w}/({id:w},{x:d},{y:d},{dir:d})/{obs}")
-        self.obs_pattern = parse.compile("({id:w},{x:d},{y:d},{dir:d})")
+        # parser to parse messages from RPi
+        self.parser = MessageParser()
 
     def run(self):
         # Loop until the user clicks the close button.
@@ -160,86 +159,39 @@ class Simulator:
                 txt = self.comms.recv()
                 if (txt == None):
                     continue
-                txt_split = txt.split("|")
-                source, message = txt_split[0], txt_split[1]
-                if source == "AND":  # From Android
-                    self.on_receive_android_message(message)
 
-                elif source == "RPI":
-                    print("Received command from RPI")
+                message_dict = self.parser.parse(txt)
+                message_data = message_dict["data"]
+                if message_dict["type"] == MessageType.START_TASK:  # From Android
+                    self.on_receive_start_task_message(message_data)
+
+                elif message_dict["type"] == MessageType.UPDATE_ROBOT_POSE:
+                    print("Received updated robot pose")
                     # E.g. ROBOT/NEXT/3,3,90 or ROBOT/NEXT/NIL
-                    message_split = message.split("/")
-                    command = message_split[0]
-                    params = message_split[1]
-                    new_robot_pos = message_split[2]
-                    if command == "ROBOT" and params == "NEXT" and new_robot_pos == "NIL":
+                    status = message_data["status"]
+                    robot_pos = message_data["robot"]
+                    if status == "DONE":
                         self.callback_queue.put(self.path_planner.send_to_rpi)
                     else:
-                        new_robot_pos_split = new_robot_pos.split(",")
-                        robot_x = new_robot_pos_split[0]
-                        robot_y = new_robot_pos_split[1]
-                        robot_dir = new_robot_pos_split[2]
+                        robot_x = robot_pos["x"]
+                        robot_y = robot_pos["y"]
+                        robot_dir = robot_pos["dir"]
                         self.callback_queue.put(
                             [self.path_planner.send_to_rpi_recalculated, [robot_x, robot_y, robot_dir]])
 
-            except IndexError:
+            except (IndexError, ValueError) as e:
                 self.comms.send("Invalid command: " + txt)
                 print("Invalid command: " + txt)
 
-    def parse_android_message(self, message: str) -> dict:
-        """Parse message from android into a dictionary for easier manipulation
+    def on_receive_start_task_message(self, data_dict: dict):
+        task = data_dict["task"]
 
-        Raises:
-            ValueError: if `message` is not in the correct format
-
-        Example:
-            >>> message = "START/EXPLORE/(R,1,1,0)/(00,04,15,-90)/(01,16,17,90)"
-            >>> parse_android_message(message)
-            {"command": "START", "task": "EXPLORE", "robot": {"id": "R", "x": 1, "y": 1, "dir": 0},
-            "obs": [{"id": "00", "x": 4, "y": 15, "dir": -90}, {"id": "01", "x": 16, "y": 17, "dir": 90}]}
-        """
-        data_dict = {}
-        parse_result = self.android_pattern.parse(message)
-        if not parse_result:
-           raise ValueError("Android message is not in the correct format")
-        assert (parse_result["id"] == "R") # robot id must be R
-        data_dict["command"] = parse_result["command"]
-        data_dict["task"] = parse_result["task"]
-        data_dict["robot"] = {key: parse_result[key] for key in ["id", "x", "y", "dir"]}
-        data_dict["obs"] = []
-
-        for obs_data in self.obs_pattern.findall(parse_result["obs"]):
-            data_dict["obs"].append(obs_data.named)
-
-        return data_dict
-
-    def on_receive_android_message(self, message: str):
-        # E.g. message =
-        # START/EXPLORE/(R,1,1,0)/(00,04,15,-90)/(01,16,17,90)/(02,12,11,180)/(03,07,03,0)/(04,17,04,90)
-        logging.info("Received command from ANDROID: %s", message)
-
-        message_data = self.parse_android_message(message)
-        # E.g. message_data = {
-        # 'command': 'START', 'task': 'EXPLORE',
-        # 'robot': {'id': 'R', 'x': 1, 'y': 1, 'dir': 0},
-        # 'obs': [{'id': '00', 'x': 4, 'y': 15, 'dir': -90},
-        #         {'id': '01', 'x': 16, 'y': 17, 'dir': 90},
-        #         {'id': '02', 'x': 12, 'y': 11, 'dir': 180},
-        #         {'id': '03', 'x': 7, 'y': 3, 'dir': 0},
-        #         {'id': '04', 'x': 17, 'y': 4, 'dir': 90}
-        #         ]
-        # }
-
-        command = message_data["command"]
-        task = message_data["task"]
-
-
-        if command == "START" and task == "EXPLORE":  # Week 8 Task
+        if task == TaskType.TASK_EXPLORE:  # Week 8 Task
             # Reset first
             self.callback_queue.put(self.reset_button_clicked)
 
             # Set robot starting pos
-            robot_params = message_data['robot']
+            robot_params = data_dict['robot']
             logging.info("Setting robot position: %s", robot_params)
             robot_x, robot_y, robot_dir = int(robot_params["x"]), int(robot_params["y"]), int(robot_params["dir"])
 
@@ -248,7 +200,7 @@ class Simulator:
 
             # Create obstacles given parameters
             logging.info("Creating obstacles...")
-            for obstacle in message_data["obs"]:
+            for obstacle in data_dict["obs"]:
                 logging.info("Obstacle: %s", obstacle)
                 id, grid_x, grid_y, dir = obstacle["id"], int(obstacle["x"]), int(obstacle["y"]), int(obstacle["dir"])
                 self.callback_queue.put([self.grid.create_obstacle, [grid_x, grid_y, dir]])
@@ -259,7 +211,7 @@ class Simulator:
             logging.info("[AND] Doing path calculation...")
             self.callback_queue.put(self.start_button_clicked)
 
-        elif command == "START" and task == "PATH":  # Week 9 Task
+        elif task == TaskType.TASK_PATH:  # Week 9 Task
             pass
 
     def reprint_screen_and_buttons(self):
@@ -352,18 +304,8 @@ if __name__ == "__main__":
 
     # Test the method to parse Android messages
     message = "START/EXPLORE/(R,1,1,0)/(00,04,15,-90)/(01,16,17,90)/(02,12,11,180)/(03,07,03,0)/(04,17,04,90)"
-    assert x.parse_android_message(message) == {
-        'command': 'START', 'task': 'EXPLORE',
-        'robot': {'id': 'R', 'x': 1, 'y': 1, 'dir': 0},
-        'obs': [{'id': '00', 'x': 4, 'y': 15, 'dir': -90},
-                {'id': '01', 'x': 16, 'y': 17, 'dir': 90},
-                {'id': '02', 'x': 12, 'y': 11, 'dir': 180},
-                {'id': '03', 'x': 7, 'y': 3, 'dir': 0},
-                {'id': '04', 'x': 17, 'y': 4, 'dir': 90}
-                ]
-        }
-
+    data_dict = x.parser.parse(message)["data"]
     # Test the threading without Android connected
-    thread = threading.Thread(target=lambda: x.on_receive_android_message(message))
+    thread = threading.Thread(target=lambda: x.on_receive_start_task_message(data_dict))
     thread.start()
     x.run()
