@@ -30,6 +30,7 @@ class PathPlan(object):
         self.collection_of_robot_pos = []
         self.all_movements_dict = {}
         self.all_robot_pos_dict = {}
+        self.all_take_photo_dict = {}
         self.obstacle_list_rpi = []
         self.EXCEPTION_COUNT = 0
         self.REPEATED_LAST_TARGET = 0
@@ -1461,16 +1462,22 @@ class PathPlan(object):
                       self.get_collection_of_robot_pos_string()]
         return '/'.join([str(elem) for elem in robot_list])
 
+    def get_take_photo_string(self):
+        photo_list = ["PHOTO", self.obstacle_cell.get_obstacle().get_obstacle_id()]
+        return '/'.join([str(elem) for elem in photo_list])
+
     def check_reached_target(self, target_a, target_b):
         x, y = self.robot.get_grid_pos()[0], self.robot.get_grid_pos()[1]
         if target_a == x and target_b == y:
             print(self.get_movements_string())
             print(self.get_current_obstacle_id())
             print(self.get_robot_pos_string())
+            print(self.get_take_photo_string())
 
             # Add into dictionary
             self.all_movements_dict[self.get_current_obstacle_id()] = self.get_movements_string()
             self.all_robot_pos_dict[self.get_current_obstacle_id()] = self.get_robot_pos_string()
+            self.all_take_photo_dict[self.get_current_obstacle_id()] = self.get_take_photo_string()
             self.obstacle_list_rpi.append(self.get_current_obstacle_id())
 
             # Send to RPI
@@ -1481,8 +1488,8 @@ class PathPlan(object):
             #
             # self.reset_collection_of_movements()
 
-            print("ROBOT POS", self.collection_of_robot_pos) # debug: checking robot pos list
-            print("MOVEMENTS", self.collection_of_movements)
+            # print("ROBOT POS", self.collection_of_robot_pos) # debug: checking robot pos list
+            # print("MOVEMENTS", self.collection_of_movements)
             col,row = 0,0
             i=0
             previous_row, previous_col = 18, 1
@@ -1609,6 +1616,7 @@ class PathPlan(object):
         print(self.get_movements_string())
         print(self.get_current_obstacle_id())
         print(self.get_robot_pos_string())
+        print(self.get_take_photo_string())
         return False
 
     def send_to_rpi(self):
@@ -1617,6 +1625,7 @@ class PathPlan(object):
             print("Remaining obstacles: ", self.obstacle_list_rpi)
             self.simulator.comms.send(self.all_robot_pos_dict[obstacle_key])
             self.simulator.comms.send(self.all_movements_dict[obstacle_key])
+            self.simulator.comms.send(self.all_take_photo_dict[obstacle_key])
         else:
             self.simulator.comms.send("No more movements.")
 
@@ -1708,11 +1717,13 @@ class PathPlan(object):
                 print(self.get_movements_string())
                 print(self.get_current_obstacle_id())
                 print(self.get_robot_pos_string())
+                print(self.get_take_photo_string())
                 print("test")
 
             # Change all movements dict and all robot pos dict for obstacle key replanned
             self.all_movements_dict[obstacle_key] = self.get_movements_string()
             self.all_robot_pos_dict[obstacle_key] = self.get_robot_pos_string()
+            self.all_take_photo_dict[obstacle_key] = self.get_take_photo_string()
             # Reset
             self.IS_ON_PATH = False
             self.reset_collection_of_movements()
@@ -1720,6 +1731,7 @@ class PathPlan(object):
 
             self.simulator.comms.send(self.all_robot_pos_dict[obstacle_key])
             self.simulator.comms.send(self.all_movements_dict[obstacle_key])
+            self.simulator.comms.send(self.all_take_photo_dict[obstacle_key])
         else:
             self.simulator.comms.send("No more movements.")
 
