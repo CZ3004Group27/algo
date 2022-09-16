@@ -2,7 +2,7 @@
 Testing Algorithm Socket Only - Not used in production.
 """
 import socket
-
+import struct
 # from misc.config import FORMAT, ALGO_SOCKET_BUFFER_SIZE, WIFI_IP, PORT
 
 # Wifi IP: RPI's ip address -> 192.168.12.12
@@ -10,11 +10,9 @@ import socket
 
 FORMAT = "UTF-8"
 ALGO_SOCKET_BUFFER_SIZE = 1024
-# WIFI_IP = "192.168.68.110"
-# WIFI_IP = "192.168.2.145"
-# WIFI_IP = "192.168.0.189"
-WIFI_IP = "192.168.12.12" # Use this for easier testing if server is in same environment
-PORT = 5050
+WIFI_IP = "192.168.27.27"
+# WIFI_IP = "127.0.0.1" # Use this for easier testing RPi integration without RPi
+PORT = 25565
 
 
 class AlgoClient:
@@ -50,8 +48,9 @@ class AlgoClient:
     def recv(self) -> str:
         try:
             # Decode : Converting from Byte to UTF-8 format.
-            message = self.client_socket.recv(ALGO_SOCKET_BUFFER_SIZE).strip().decode(FORMAT)
-            if len(message) > 0:
+            raw_bytes = self.receive_message_with_size()
+            if raw_bytes is not None:
+                message = self.decode(raw_bytes)
                 print(f'[Algo] Received Message from Algo Server: {message}')
                 return message
             return None
@@ -60,15 +59,50 @@ class AlgoClient:
             print(f"[Error Message]: {error}")
             raise error
 
-    def send(self, message) -> str:
+    def send(self, message):
         try:
             print(f'[Algo] Message to Algo Server: {message}')
-            self.client_socket.sendall(message.encode(FORMAT))
+            self.send_message_with_size(self.encode(message))
 
         except Exception as error:
             print("[Algo] Failed to send to Algo Server.")
             print(f"[Error Message]: {error}")
             raise error
+
+    def encode(self, message: str) -> bytes:
+        """Encode a message to a byte array"""
+        return message.encode(FORMAT)
+
+    def decode(self, raw_bytes: bytes) -> str:
+        """Decode a byte array to a string message"""
+        return raw_bytes.strip().decode(FORMAT)
+
+    def send_message_with_size(self, data: bytes):
+        """Send (size, data) where size is size in bytes of data"""
+        number_of_bytes = len(data)
+        packet_length = struct.pack("!I", number_of_bytes)
+        packet_length += data
+        self.client_socket.sendall(packet_length)
+
+    def receive_message_with_size(self):
+        """Receive the raw bytes from the message"""
+        try:
+            data = self.client_socket.recv(4) # read the first 4 bytes (data length)
+            if len(data) == 0:
+                return None
+            else:
+                number_of_bytes = struct.unpack("!I", data)[0] # convert 4 bytes into integer
+                received_packets = b''
+                bytes_to_receive = number_of_bytes
+                while len(received_packets) < number_of_bytes:
+                    packet = self.client_socket.recv(bytes_to_receive)
+                    bytes_to_receive -= len(packet)
+                    received_packets += packet
+                return received_packets
+        except socket.timeout:
+            return None
+        except:
+            return None
 
 
 # Standalone testing.
