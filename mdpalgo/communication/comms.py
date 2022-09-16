@@ -15,38 +15,37 @@ ALGO_SOCKET_BUFFER_SIZE = 1024
 # WIFI_IP = "192.168.0.189"
 WIFI_IP = "192.168.12.12" # Use this for easier testing if server is in same environment
 PORT = 5050
-    
+
 
 class AlgoClient:
 
     def __init__(self, server_ip=WIFI_IP, server_port=PORT) -> None:
-        print("[Algo Client] Initilising Algo Client.")
+        print("[Algo Client] Initialising Algo Client.")
         self.client_socket = None
         self.server_address = (server_ip, server_port)
         print("[Algo Client] Client has been initilised.")
 
     def connect(self) -> bool:
-        while True:
-            try:
-                # Connect to RPI via TCP
-                self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                self.client_socket.connect((WIFI_IP, PORT))
-                return True
-            except Exception as error:
-                print(f'[Algo] Failed to connect to Algorithm Server at {self.server_address}')
-                print(f"[Error Message]: {error}")
-                return False
+        try:
+            # Connect to RPI via TCP
+            self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.client_socket.connect((WIFI_IP, PORT))
+            return True
+        except Exception as error:
+            print(f'[Algo] Failed to connect to Algorithm Server at {self.server_address}')
+            print(f"[Error Message]: {error}")
+            return False
 
     def disconnect(self) -> bool:
         try:
             if self.client_socket is not None:
                 self.client_socket.close()
                 self.client_socket = None
+            return True
         except Exception as error:
             print(f'[Algo] Failed to disconnect from Algorithm Server at {self.server_address}')
             print(f"[Error Message]: {error}")
             return False
-        return True
 
     def recv(self) -> str:
         try:
@@ -64,7 +63,7 @@ class AlgoClient:
     def send(self, message) -> str:
         try:
             print(f'[Algo] Message to Algo Server: {message}')
-            self.client_socket.send(message.encode(FORMAT))
+            self.client_socket.sendall(message.encode(FORMAT))
 
         except Exception as error:
             print("[Algo] Failed to send to Algo Server.")
@@ -74,12 +73,12 @@ class AlgoClient:
 
 # Standalone testing.
 if __name__ == '__main__':
+    from server_test import WIFI_IP # use the testing IP
     client = AlgoClient()
-    client.connect()
+    connect_status = client.connect()
+    assert (connect_status) # if the server is up, this should be true
 
     while True:
-        message = input("[Client] Send Message to server: ")
+        message = input("[Client] Input message to send to server: ")
         client.send(message)
         received = client.recv()
-        if received is not None:
-            print(f"[Server] Received message from client: {received}")

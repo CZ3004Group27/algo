@@ -2,6 +2,7 @@
 Rapsberry Pi serves as socket server, Algorithm will need a client socket script
 as well to establish connection. Should be able to send and receive messages
 via the server/client.
+This script is used to test the RPi server.
 '''
 
 import socket
@@ -10,13 +11,13 @@ import threading
 
 FORMAT = "UTF-8"
 ALGO_SOCKET_BUFFER_SIZE = 1024
-WIFI_IP = "localhost"
+WIFI_IP = "127.0.0.1"
 PORT = 5050
 
 class Algorithm:
     def __init__(self, host=WIFI_IP, port=PORT):
         print("[Algo] Initialising Algorithm Process")
-        
+
         self.host = host
         self.port = port
 
@@ -47,7 +48,7 @@ class Algorithm:
                 if self.client_socket is not None:
                     self.client_socket.close()
                     self.client_socket = None
-            
+
             print(f'[Algo] Retrying for a connection to {self.host}:{self.port}')
 
     def disconnect(self):
@@ -93,7 +94,7 @@ class Algorithm:
     def send(self, message):
         try:
             print(f'[Algo] Message to Algo Client: {message}')
-            self.client_socket.send(message)
+            self.client_socket.sendall(message)
 
         except Exception as error:
             print("[Algo] Failed to send to Algo Client.")
@@ -116,5 +117,4 @@ if __name__ == '__main__':
     # This is because input is a blocking call, and will prevent the worker thread from printing
     message = input("[Server] Send Message to client: ")
     server.send(message.encode(FORMAT))
-        
-        
+
