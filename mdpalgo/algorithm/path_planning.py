@@ -1466,6 +1466,10 @@ class PathPlan(object):
         photo_list = ["PHOTO", self.obstacle_cell.get_obstacle().get_obstacle_id()]
         return '/'.join([str(elem) for elem in photo_list])
 
+    def get_image_result_string(self, target_id):
+        image_result_list = ["TARGET", target_id, self.obstacle_cell.get_obstacle().get_obstacle_id()]
+        return '/'.join([str(elem) for elem in image_result_list])
+
     def check_reached_target(self, target_a, target_b):
         x, y = self.robot.get_grid_pos()[0], self.robot.get_grid_pos()[1]
         if target_a == x and target_b == y:
