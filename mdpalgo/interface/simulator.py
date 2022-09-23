@@ -15,6 +15,9 @@ from mdpalgo.interface.panel import Panel
 from mdpalgo.map.grid import Grid
 from mdpalgo.robot.robot import Robot
 
+# for image recognition
+from imagerec.infer import infer, get_image_from
+
 # Set the HEIGHT and WIDTH of the screen
 WINDOW_SIZE = [960, 660]
 
@@ -179,9 +182,17 @@ class Simulator:
                         self.callback_queue.put(
                             [self.path_planner.send_to_rpi_recalculated, [robot_x, robot_y, robot_dir]])
 
+                elif message_dict["type"] == MessageType.IMAGE_TAKEN:
+                    self.on_receive_image_taken_message(self, message_data)
+
             except (IndexError, ValueError) as e:
                 self.comms.send("Invalid command: " + txt)
                 print("Invalid command: " + txt)
+
+    def on_receive_image_taken_message(self, data_dict: dict):
+        image = data_dict["image"]
+        target_id = infer(image)
+        image.save(some image path here)
 
     def on_receive_start_task_message(self, data_dict: dict):
         task = data_dict["task"]

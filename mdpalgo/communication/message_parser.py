@@ -9,6 +9,7 @@ class MessageType(Enum):
     """
     START_TASK = "START" # first token is "START"
     UPDATE_ROBOT_POSE = "ROBOT" # current pose of the robot
+    IMAGE_TAKEN = "PHOTODATA" # the photo taken by the robot
 
 class TaskType(Enum):
     """Type of tasks"""
@@ -44,6 +45,8 @@ class MessageParser:
             message_dict["data"] = self.parse_start_task(message)
         elif message_type == MessageType.UPDATE_ROBOT_POSE:
             message_dict["data"] = self.parse_update_robot_pose(message)
+        elif message_type == MessageType.IMAGE_TAKEN:
+            message_dict["data"] = self.parse_image_taken(message)
         return message_dict
 
     def parse_start_task(self, message: str) -> dict:
@@ -134,6 +137,11 @@ class MessageParser:
             raise ValueError("Message is not in the correct format of update robot pose")
 
         return data_dict
+
+    def parse_image_taken(self, message):
+        """WIP"""
+        data_dict = {}
+        data_dict["image"] = message
 
 
 if __name__ == "__main__":
