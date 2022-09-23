@@ -14,6 +14,8 @@ from mdpalgo.communication.message_parser import MessageParser, MessageType, Tas
 from mdpalgo.interface.panel import Panel
 from mdpalgo.map.grid import Grid
 from mdpalgo.robot.robot import Robot
+# import mdpalgo.image # TODO: configure the path to save image
+from imagerec.helpers import get_path_to
 
 # for image recognition
 from imagerec.infer import infer, get_image_from
@@ -79,6 +81,9 @@ class Simulator:
 
         # parser to parse messages from RPi
         self.parser = MessageParser()
+
+        # TODO: configure the image path
+        self.image_folder = get_path_to(mdpalgo.image)
 
     def run(self):
         # Loop until the user clicks the close button.
@@ -192,7 +197,10 @@ class Simulator:
     def on_receive_image_taken_message(self, data_dict: dict):
         image = data_dict["image"]
         target_id = infer(image)
-        image.save(some image path here)
+        # TODO: choose the image save path
+
+        # image.save(some image path here)
+
 
     def on_receive_start_task_message(self, data_dict: dict):
         task = data_dict["task"]
@@ -318,5 +326,8 @@ if __name__ == "__main__":
     data_dict = x.parser.parse(message)["data"]
     # Test the threading without Android connected
     thread = threading.Thread(target=lambda: x.on_receive_start_task_message(data_dict))
+
+    # TODO: test the receiving image function
+    # data_dict = {"image": Image object}
     thread.start()
     x.run()
