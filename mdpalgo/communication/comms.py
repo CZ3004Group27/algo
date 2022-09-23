@@ -115,7 +115,21 @@ if __name__ == '__main__':
     connect_status = client.connect()
     assert (connect_status) # if the server is up, this should be true
 
+    # import the libraries for parsing messages
+    from mdpalgo.communication.message_parser import MessageParser, MessageType
+    parser = MessageParser()
+
     while True:
         message = input("[Client] Input message to send to server: ")
         client.send(message)
         received = client.recv()
+
+        # test the photo data
+        message_data = parser.parse(received)
+        if message_data["type"] == MessageType.IMAGE_TAKEN:
+            import cv2
+            img = message_data["data"]["image"]
+            cv2.imwrite("catimage.jpg", img)
+            cv2.imshow("preview", img)
+            cv2.waitKey(0)
+            cv2.destroyAllWindows()

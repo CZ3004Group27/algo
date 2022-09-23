@@ -3,6 +3,9 @@ Parse the raw message from RPi and return a convenient data structure
 """
 from enum import Enum
 import parse
+import base64
+import cv2
+import numpy as np
 
 class MessageType(Enum):
     """Message type is determined by the first token
@@ -33,7 +36,7 @@ class MessageParser:
         """
         # the first token is unique among different message types
         try:
-            message_type = message.split("/")[0]
+            message_type = message.partition("/")[0]
             message_type = MessageType(message_type)
         except IndexError:
             raise ValueError("Message is not in the correct format separated by /")
@@ -138,11 +141,22 @@ class MessageParser:
 
         return data_dict
 
-    def parse_image_taken(self, message):
-        """WIP"""
-        data_dict = {}
-        data_dict["image"] = message
+    def parse_image_taken(self, message:str) -> dict:
+        """Parse the image taken message to return the image
 
+        Example:
+            >>> message = "PHOTODATA/<image_string>"
+            >>> parse_image_taken(message)
+            {"image": <np_ndarray image>}
+        """
+        image_string = message.partition("/")[2]
+        data_dict = {}
+        img_bytes = base64.b64decode(image_string.encode("utf-8"))
+        jpg_as_np = np.frombuffer(img_bytes, dtype=np.uint8)
+        img = cv2.imdecode(jpg_as_np, cv2.IMREAD_COLOR)
+
+        data_dict["image"] = img
+        return data_dict
 
 if __name__ == "__main__":
     parser = MessageParser()
@@ -193,3 +207,12 @@ if __name__ == "__main__":
             "robot": {"x": 3, "y": 3, "dir": 90}
         }
     }
+
+    # Test the method to parse image
+    original_image = cv2.imread("catimage.jpg")
+    buffer = cv2.imencode('.jpg', original_image)[1].tobytes()
+    message = "PHOTODATA/" + base64.b64encode(buffer).decode("utf-8")
+    message_data = parser.parse(message)
+    assert message_data["type"] == MessageType.IMAGE_TAKEN
+    assert type(message_data["data"]["image"]) == np.ndarray
+    assert message_data["data"]["image"].shape == original_image.shape
