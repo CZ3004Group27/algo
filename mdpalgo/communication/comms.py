@@ -10,8 +10,11 @@ import struct
 
 FORMAT = "UTF-8"
 ALGO_SOCKET_BUFFER_SIZE = 1024
-WIFI_IP = "192.168.27.27"
-# WIFI_IP = "127.0.0.1" # Use this for easier testing RPi integration without RPi
+
+RPI_IP = "192.168.27.27"
+TEST_IP = "127.0.0.1" # Use this for easier testing RPi integration without RPi
+
+WIFI_IP = RPI_IP
 PORT = 25565
 
 
@@ -107,7 +110,7 @@ class AlgoClient:
 
 # Standalone testing.
 if __name__ == '__main__':
-    from server_test import WIFI_IP # use the testing IP
+    WIFI_IP = TEST_IP # use the testing IP
     client = AlgoClient()
     connect_status = client.connect()
     assert (connect_status) # if the server is up, this should be true
