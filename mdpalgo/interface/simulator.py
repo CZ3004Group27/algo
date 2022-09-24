@@ -1,4 +1,5 @@
 import logging
+import glob
 import os
 import queue
 import threading
@@ -14,11 +15,14 @@ from mdpalgo.communication.message_parser import MessageParser, MessageType, Tas
 from mdpalgo.interface.panel import Panel
 from mdpalgo.map.grid import Grid
 from mdpalgo.robot.robot import Robot
-# import mdpalgo.image # TODO: configure the path to save image
+import mdpalgo.images
 from imagerec.helpers import get_path_to
 
 # for image recognition
 from imagerec.infer import infer, get_image_from
+
+# for importing test image
+from PIL import Image
 
 # Set the HEIGHT and WIDTH of the screen
 WINDOW_SIZE = [960, 660]
@@ -82,8 +86,8 @@ class Simulator:
         # parser to parse messages from RPi
         self.parser = MessageParser()
 
-        # TODO: configure the image path
-        self.image_folder = get_path_to(mdpalgo.image)
+        # configure the image path
+        self.image_folder = get_path_to(mdpalgo.images)
 
     def run(self):
         # Loop until the user clicks the close button.
@@ -197,10 +201,29 @@ class Simulator:
     def on_receive_image_taken_message(self, data_dict: dict):
         image = data_dict["image"]
         target_id = infer(image)
-        # TODO: choose the image save path
 
-        # image.save(some image path here)
+        # create image folder if it doesn't exist
+        if not os.path.exists(self.image_folder):
+            os.makedirs(self.image_folder)
 
+        # get list of images
+        list_of_images = glob.glob(f"{self.image_folder}\*.jpg")
+        print("List of images:", list_of_images)
+
+        # set image name
+        if len(list_of_images) == 0:
+            image_name = "img_1"
+        else:
+            latest_image = max(list_of_images, key=os.path.getctime)
+            print("Latest:", latest_image)
+            previous_image_name = latest_image.split("\\")[-1][:-4]
+            print("Previous image name:", previous_image_name)
+            image_number = int(previous_image_name.split("_")[-1]) + 1
+            image_name = "img_" + str(image_number)
+
+        print("Image name:", image_name)
+        image.save(f"{self.image_folder}\{image_name}.jpg")
+        return target_id
 
     def on_receive_start_task_message(self, data_dict: dict):
         task = data_dict["task"]
@@ -327,7 +350,10 @@ if __name__ == "__main__":
     # Test the threading without Android connected
     thread = threading.Thread(target=lambda: x.on_receive_start_task_message(data_dict))
 
-    # TODO: test the receiving image function
-    # data_dict = {"image": Image object}
+    # Test the receiving image function
+    image = Image.open("mdpalgo/images/img_1.jpg") # put path to random test image
+    data_dict = {"image": image}
+    thread = threading.Thread(target=lambda: x.on_receive_image_taken_message(data_dict))
+
     thread.start()
     x.run()

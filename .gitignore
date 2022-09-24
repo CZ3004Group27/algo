@@ -85,3 +85,6 @@ dmypy.json
 .idea/mdp-algorithm.iml
 .idea/misc.xml
 .idea/misc.xml
+
+# ignore files in images folder
+mdpalgo/images/*
