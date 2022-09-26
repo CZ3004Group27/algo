@@ -87,4 +87,6 @@ dmypy.json
 .idea/misc.xml
 
 # ignore files in images folder
-mdpalgo/images/*
+mdpalgo/images/*.jpg
+!mdpalgo/images/img_1.jpg
+

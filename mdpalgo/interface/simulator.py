@@ -207,7 +207,7 @@ class Simulator:
             os.makedirs(self.image_folder)
 
         # get list of images
-        list_of_images = glob.glob(f"{self.image_folder}\*.jpg")
+        list_of_images = list(self.image_folder.glob("*.jpg"))
         print("List of images:", list_of_images)
 
         # set image name
@@ -216,13 +216,13 @@ class Simulator:
         else:
             latest_image = max(list_of_images, key=os.path.getctime)
             print("Latest:", latest_image)
-            previous_image_name = latest_image.split("\\")[-1][:-4]
+            previous_image_name = latest_image.stem
             print("Previous image name:", previous_image_name)
             image_number = int(previous_image_name.split("_")[-1]) + 1
             image_name = "img_" + str(image_number)
 
         print("Image name:", image_name)
-        image.save(f"{self.image_folder}\{image_name}.jpg")
+        image.save(self.image_folder.joinpath(f"{image_name}.jpg"))
         return target_id
 
     def on_receive_start_task_message(self, data_dict: dict):
@@ -351,7 +351,9 @@ if __name__ == "__main__":
     thread = threading.Thread(target=lambda: x.on_receive_start_task_message(data_dict))
 
     # Test the receiving image function
-    image = Image.open("mdpalgo/images/img_1.jpg") # put path to random test image
+    image_folder = get_path_to(mdpalgo.images)
+    image_path = image_folder.joinpath("img_1.jpg")
+    image = Image.open(image_path)
     data_dict = {"image": image}
     thread = threading.Thread(target=lambda: x.on_receive_image_taken_message(data_dict))
 
