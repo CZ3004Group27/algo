@@ -192,7 +192,7 @@ class Simulator:
                             [self.path_planner.send_to_rpi_recalculated, [robot_x, robot_y, robot_dir]])
 
                 elif message_dict["type"] == MessageType.IMAGE_TAKEN:
-                    self.on_receive_image_taken_message(self, message_data)
+                    self.on_receive_image_taken_message(message_data)
 
             except (IndexError, ValueError) as e:
                 self.comms.send("Invalid command: " + txt)
@@ -200,7 +200,13 @@ class Simulator:
 
     def on_receive_image_taken_message(self, data_dict: dict):
         image = data_dict["image"]
-        target_id = infer(image)
+        infer_result = infer(image)
+        try:
+            target_id = self.check_infer_result(infer_result)
+        except Exception as e:
+            logging.exception(e)
+            self.path_planner.request_photo_from_rpi() # take photo again if exception raised
+            return
 
         # get list of images
         list_of_images = list(self.image_folder.glob("*.jpg"))
@@ -220,6 +226,17 @@ class Simulator:
         print("Image name:", image_name)
         image.save(self.image_folder.joinpath(f"{image_name}.jpg"))
         return target_id
+
+    def check_infer_result(self, infer_result: list):
+        # remove all elements in infer_result that are "Bullseye"
+        result = [elem for elem in infer_result if elem != "Bullseye"]
+
+        # if all elements in list are "Bullseye", raise exception
+        if len(result) == 0:
+            raise Exception("No image result")
+        # get first element that is not "Bullseye"
+        else:
+            return result[0]
 
     def on_receive_start_task_message(self, data_dict: dict):
         task = data_dict["task"]
