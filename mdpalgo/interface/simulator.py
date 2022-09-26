@@ -345,6 +345,7 @@ if __name__ == "__main__":
     data_dict = x.parser.parse(message)["data"]
     # Test the threading without Android connected
     thread = threading.Thread(target=lambda: x.on_receive_start_task_message(data_dict))
+    thread.start()
 
     # Test the receiving image function
     image_folder = get_path_to(mdpalgo.images)
