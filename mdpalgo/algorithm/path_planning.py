@@ -36,6 +36,7 @@ class PathPlan(object):
         self.REPEATED_LAST_TARGET = 0
         self.IS_ON_PATH = False
         self.skipped_obstacles = []
+        self.obstacle_key = None # the current obstacle key
 
     def start_robot(self):
         # Remove robot starting position from fastest_route
@@ -1625,13 +1626,16 @@ class PathPlan(object):
 
     def send_to_rpi(self):
         if self.obstacle_list_rpi:
-            obstacle_key = self.obstacle_list_rpi.pop(0)
+            self.obstacle_key = self.obstacle_list_rpi.pop(0)
             print("Remaining obstacles: ", self.obstacle_list_rpi)
-            self.simulator.comms.send(self.all_robot_pos_dict[obstacle_key])
-            self.simulator.comms.send(self.all_movements_dict[obstacle_key])
-            self.simulator.comms.send(self.all_take_photo_dict[obstacle_key])
+            self.simulator.comms.send(self.all_robot_pos_dict[self.obstacle_key])
+            self.simulator.comms.send(self.all_movements_dict[self.obstacle_key])
+            self.request_photo_from_rpi()
         else:
             self.simulator.comms.send("No more movements.")
+
+    def request_photo_from_rpi(self):
+        self.simulator.comms.send(self.all_take_photo_dict[self.obstacle_key])
 
     def send_to_rpi_recalculated(self, arglist):
         robot_x = int(arglist[0])

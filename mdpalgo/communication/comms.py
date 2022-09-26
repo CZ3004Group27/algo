@@ -31,6 +31,7 @@ class AlgoClient:
             # Connect to RPI via TCP
             self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.client_socket.connect((WIFI_IP, PORT))
+            print(f"[Algo Client] Client successfully connected to Server at {self.server_address}.")
             return True
         except Exception as error:
             print(f'[Algo] Failed to connect to Algorithm Server at {self.server_address}')
