@@ -204,7 +204,7 @@ class Simulator:
         try:
             target_id = self.check_infer_result(infer_result)
         except Exception as e:
-            print(e.message())
+            logging.exception(e)
             self.path_planner.request_photo_from_rpi() # take photo again if exception raised
             return
 
