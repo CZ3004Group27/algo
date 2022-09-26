@@ -1,8 +1,6 @@
 # Algorithm package for MDP
 
-## For running the project
-
-### Step 1: Install the package in development mode
+## Install the package in development mode
 
 In the root folder containing `setup.py` file, run
 
@@ -14,17 +12,23 @@ The flag `-e` is short for --editable, and `.`  refers to the current working
 directory, so together, it means to install the current directory
 in editable mode. This will also install any dependencies declared with install_requires
 
-### Step 2: Run the main file
+## Week 8 task
 
-Before running the main file, make sure to remove the images in "images" folder.
-
-In the root folder containing `setup.py` file, run
+**Note:** Before running the main file, make sure to remove the images in "images" folder.
 
 ```sh
 python -m mdpalgo
 ```
 
-## Details to note:
+## Week 9 task
+
+**Note:** Before running the main file, make sure to remove the images in "images" folder.
+
+```sh
+python -m fastestalgo
+```
+
+## Details to note
 
 The arena:
 
