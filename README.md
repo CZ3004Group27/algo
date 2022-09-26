@@ -16,6 +16,8 @@ in editable mode. This will also install any dependencies declared with install_
 
 ### Step 2: Run the main file
 
+Before running the main file, make sure to remove the images in "images" folder.
+
 In the root folder containing `setup.py` file, run
 
 ```sh

@@ -202,10 +202,6 @@ class Simulator:
         image = data_dict["image"]
         target_id = infer(image)
 
-        # create image folder if it doesn't exist
-        if not os.path.exists(self.image_folder):
-            os.makedirs(self.image_folder)
-
         # get list of images
         list_of_images = list(self.image_folder.glob("*.jpg"))
         print("List of images:", list_of_images)
