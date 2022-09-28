@@ -795,99 +795,6 @@ class PathPlan(object):
         self.EXCEPTION_COUNT += 1
         return False
 
-    # c is how many grids in front you want to check (use 3 for turns)
-    def get_grid_pos_straight(self, movement, c):
-        grid_x, grid_y, initial_angle = self.robot.grid_x, self.robot.grid_y, self.robot.angle
-        if initial_angle == constants.NORTH:
-            if movement == "FORWARD_R" or movement == "FORWARD_L" or movement == "FORWARD":
-                grid_x, grid_y = grid_x, grid_y + c
-            elif movement == "BACKWARD_R" or movement == "BACKWARD_L" or movement == "BACKWARD":
-                grid_x, grid_y = grid_x, grid_y - c
-        elif initial_angle == constants.SOUTH:
-            if movement == "FORWARD_R" or movement == "FORWARD_L" or movement == "FORWARD":
-                grid_x, grid_y = grid_x, grid_y - c
-            elif movement == "BACKWARD_R" or movement == "BACKWARD_L" or movement == "BACKWARD":
-                grid_x, grid_y = grid_x, grid_y + c
-        elif initial_angle == constants.EAST:
-            if movement == "FORWARD_R" or movement == "FORWARD_L" or movement == "FORWARD":
-                grid_x, grid_y = grid_x + c, grid_y
-            elif movement == "BACKWARD_R" or movement == "BACKWARD_L" or movement == "BACKWARD":
-                grid_x, grid_y = grid_x - c, grid_y
-        elif initial_angle == constants.WEST:
-            if movement == "FORWARD_R" or movement == "FORWARD_L" or movement == "FORWARD":
-                grid_x, grid_y = grid_x - c, grid_y
-            elif movement == "BACKWARD_R" or movement == "BACKWARD_L" or movement == "BACKWARD":
-                grid_x, grid_y = grid_x + c, grid_y
-        return [grid_x, grid_y]
-
-    # for checking the diagonal 3x3 grid
-    def get_grid_pos_turn(self, movement):
-        grid_x, grid_y, initial_angle = self.robot.grid_x, self.robot.grid_y, self.robot.angle
-        if initial_angle == constants.NORTH:
-            if movement == "FORWARD_R":
-                grid_x, grid_y = grid_x + 3, grid_y + 3
-            elif movement == "FORWARD_L":
-                grid_x, grid_y = grid_x - 3, grid_y + 3
-            elif movement == "BACKWARD_R":
-                grid_x, grid_y = grid_x + 3, grid_y - 3
-            elif movement == "BACKWARD_L":
-                grid_x, grid_y = grid_x - 3, grid_y - 3
-        elif initial_angle == constants.SOUTH:
-            if movement == "FORWARD_R":
-                grid_x, grid_y = grid_x - 3, grid_y - 3
-            elif movement == "FORWARD_L":
-                grid_x, grid_y = grid_x + 3, grid_y - 3
-            elif movement == "BACKWARD_R":
-                grid_x, grid_y = grid_x - 3, grid_y + 3
-            elif movement == "BACKWARD_L":
-                grid_x, grid_y = grid_x + 3, grid_y + 3
-        elif initial_angle == constants.EAST:
-            if movement == "FORWARD_R":
-                grid_x, grid_y = grid_x + 3, grid_y - 3
-            elif movement == "FORWARD_L":
-                grid_x, grid_y = grid_x + 3, grid_y + 3
-            elif movement == "BACKWARD_R":
-                grid_x, grid_y = grid_x - 3, grid_y - 3
-            elif movement == "BACKWARD_L":
-                grid_x, grid_y = grid_x - 3, grid_y + 3
-        elif initial_angle == constants.WEST:
-            if movement == "FORWARD_R":
-                grid_x, grid_y = grid_x - 3, grid_y + 3
-            elif movement == "FORWARD_L":
-                grid_x, grid_y = grid_x - 3, grid_y - 3
-            elif movement == "BACKWARD_R":
-                grid_x, grid_y = grid_x + 3, grid_y + 3
-            elif movement == "BACKWARD_L":
-                grid_x, grid_y = grid_x + 3, grid_y - 3
-        return [grid_x, grid_y]
-
-    def check_3by3_area(self, grid_pos):
-        pos = self.grid.grid_to_pixel(grid_pos)
-
-        # First check if exceeding borders
-        if not ((constants.min_pixel_pos_x + self.robot.robot_w < pos[
-            0] < constants.max_pixel_pos_x - self.robot.robot_w) \
-                and (constants.min_pixel_pos_y + self.robot.robot_h < pos[
-                    1] < constants.max_pixel_pos_y - self.robot.robot_h)):
-            print("exceed border")
-            return False
-
-        for obstacle_id in self.grid.get_obstacle_cells():
-            obstacle_grid_coord = obstacle_id.split("-")
-            obstacle_grid_x, obstacle_grid_y = int(obstacle_grid_coord[0]), int(obstacle_grid_coord[1])
-            obstacle_grid_coord = [obstacle_grid_x, obstacle_grid_y]
-
-            # Using pixel position
-            obstacle_pixel_x, obstacle_pixel_y = self.grid.grid_to_pixel(obstacle_grid_coord)[0], \
-                                                 self.grid.grid_to_pixel(obstacle_grid_coord)[1]
-            border_pixel_length = (self.grid.block_size + MARGIN) * 3  # about 3 squares border
-
-            # Check if overlapping with obstacles
-            if (obstacle_pixel_x - border_pixel_length < pos[0] < obstacle_pixel_x + border_pixel_length) \
-                    and (obstacle_pixel_y - border_pixel_length < pos[1] < obstacle_pixel_y + border_pixel_length):
-                return False
-        return True
-
     def replan_trip(self):
         print("Replanning trip...")
         a, b, x, y = self.target_x, self.target_y, self.robot.get_grid_pos()[0], self.robot.get_grid_pos()[1]
@@ -1485,16 +1392,6 @@ class PathPlan(object):
             self.all_take_photo_dict[self.get_current_obstacle_id()] = self.get_take_photo_string()
             self.obstacle_list_rpi.append(self.get_current_obstacle_id())
 
-            # Send to RPI
-            # if constants.RPI_CONNECTED:
-            #
-            #     self.simulator.comms.send(self.get_movements_string())
-            #     self.simulator.comms.send(self.get_robot_pos_string())
-            #
-            # self.reset_collection_of_movements()
-
-            # print("ROBOT POS", self.collection_of_robot_pos) # debug: checking robot pos list
-            # print("MOVEMENTS", self.collection_of_movements)
             col,row = 0,0
             i=0
             previous_row, previous_col = 18, 1
@@ -1888,51 +1785,3 @@ class PathPlan(object):
             constants.IS_CHECKING = False
             print("Check-fail:", area)
             return False
-
-    # def check_permutation(self, perm):
-    #     initial_x = self.robot_x
-    #     initial_y = self.robot_y
-    #     initial_dir = self.robot_direction
-    #     possible = True
-    #     for target in perm:
-    #         target_x = target[0]
-    #         target_y = target[1]
-    #         target_direction = target[2]
-    #         obstacle_cell = target[3]
-    #
-    #         robot_x = self.robot.get_grid_pos()[0]
-    #         robot_y = self.robot.get_grid_pos()[1]
-    #         robot_direction = self.robot.get_angle_of_rotation()
-    #         if not self.check_movement_possible(target_x, target_y, robot_x, robot_y,
-    #                                             robot_direction, target_direction):
-    #             possible = False
-    #             break
-    #
-    #     # Reset robot position
-    #     self.robot.correct_coords_and_angle(initial_dir, self.grid.grid_to_pixel((initial_x, initial_y)))
-    #
-    #     if possible:
-    #         return True
-    #     return False
-    #
-    # def brute_force_possible_path(self):
-    #     no_of_obstacles = len(self.fastest_route)
-    #     possible_routes = []
-    #     list_of_possible_perms = list(itertools.permutations(self.fastest_route))
-    #
-    #     for perm in list_of_possible_perms:
-    #         if self.check_permutation(perm):
-    #             possible_routes.append(perm)
-    #
-    #     print("PRINTING POSSIBLE ROUTES")
-    #     for route in possible_routes:
-    #         print(route)
-    #
-    #     new_route = []
-    #     if len(possible_routes) == 0:
-    #         # Find a place to reposition n recheck
-    #         return self.fastest_route
-    #     else:
-    #         for obstacle in possible_routes[randint(0, len(possible_routes)) - 1]:
-    #             new_route.append(obstacle)
-    #         return new_route
