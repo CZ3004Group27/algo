@@ -21,7 +21,7 @@ from imagerec.helpers import get_path_to
 from imagerec.infer import infer, get_image_from
 
 # for saving the image
-import cv2
+from PIL import Image
 
 # Set the HEIGHT and WIDTH of the screen
 WINDOW_SIZE = [960, 660]
@@ -272,8 +272,9 @@ class Simulator:
             image_number = int(previous_image_name.split("_")[-1]) + 1
             image_name = "img_" + str(image_number)
 
+        print("Image label:", target_id)
         print("Image name:", image_name)
-        cv2.imwrite(self.image_folder.joinpath(f"{image_name}.jpg"), image)
+        image.save(self.image_folder.joinpath(f"{image_name}.jpg"))
         image_result_string = self.path_planner.get_image_result_string(target_id)
         if constants.RPI_CONNECTED:
             # send image result string to rpi
@@ -384,7 +385,8 @@ if __name__ == "__main__":
     # Test the receiving image function
     image_folder = get_path_to(mdpalgo.images)
     image_path = image_folder.joinpath("img_1.jpg")
-    image = cv2.imread(image_path)
+    with Image.open(image_path) as image:
+        image.load()
     data_dict = {"image": image}
     thread = threading.Thread(target=lambda: x.on_receive_image_taken_message(data_dict))
 
