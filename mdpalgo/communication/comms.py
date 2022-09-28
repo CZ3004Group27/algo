@@ -7,7 +7,7 @@ import mdpalgo.constants as constants
 
 FORMAT = "UTF-8"
 ALGO_SOCKET_BUFFER_SIZE = 1024
-
+MAX_MESSAGE_LENGTH_PRINT = 200 # above this value, most likely image
 
 class AlgoClient:
 
@@ -52,7 +52,10 @@ class AlgoClient:
             raw_bytes = self.receive_message_with_size()
             if raw_bytes is not None:
                 message = self.decode(raw_bytes)
-                print(f'[Algo] Received Message from Algo Server: {message}')
+                if (len(message) <= MAX_MESSAGE_LENGTH_PRINT):
+                    print(f'[Algo] Received Message from Algo Server: {message}')
+                else:
+                    print(f'[Algo] Received Long Message (likely image) from Algo Server: {message[:MAX_MESSAGE_LENGTH_PRINT]}')
                 return message
             return None
         except Exception as error:
