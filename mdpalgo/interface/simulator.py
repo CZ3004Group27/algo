@@ -275,7 +275,9 @@ class Simulator:
 
         print("Image name:", image_name)
         image.save(self.image_folder.joinpath(f"{image_name}.jpg"))
-        return target_id
+        image_result_string = self.path_planner.get_image_result_string(target_id)
+        # send image result string to rpi
+        self.comms.send(image_result_string)
 
     def check_infer_result(self, infer_result: list):
         # remove all elements in infer_result that are "Bullseye"
