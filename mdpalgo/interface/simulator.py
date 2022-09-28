@@ -89,6 +89,9 @@ class Simulator:
         # configure the image path
         self.image_folder = get_path_to(mdpalgo.images)
 
+        # count of 'no image result' exception
+        self.no_image_result_count = 0
+
     def run(self):
         # Loop until the user clicks the close button.
         done = False
@@ -205,6 +208,13 @@ class Simulator:
             target_id = self.check_infer_result(infer_result)
         except Exception as e:
             logging.exception(e)
+            self.no_image_result_count += 1
+
+            # if no image result for 2 times, return early to prevent request photo loop
+            if self.no_image_result_count == 2:
+                self.no_image_result_count = 0
+                return
+
             self.path_planner.request_photo_from_rpi() # take photo again if exception raised
             return
 
