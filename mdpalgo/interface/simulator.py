@@ -175,31 +175,65 @@ class Simulator:
                 if (txt == None):
                     continue
 
-                message_dict = self.parser.parse(txt)
-                message_data = message_dict["data"]
-                if message_dict["type"] == MessageType.START_TASK:  # From Android
+                message_type_and_data = self.parser.parse(txt)
+                message_data = message_type_and_data["data"]
+                if message_type_and_data["type"] == MessageType.START_TASK:  # From Android
                     self.on_receive_start_task_message(message_data)
 
-                elif message_dict["type"] == MessageType.UPDATE_ROBOT_POSE:
-                    print("Received updated robot pose")
-                    # E.g. ROBOT/NEXT/3,3,90 or ROBOT/NEXT/NIL
-                    status = message_data["status"]
-                    robot_pos = message_data["robot"]
-                    if status == "DONE":
-                        self.callback_queue.put(self.path_planner.send_to_rpi)
-                    else:
-                        robot_x = robot_pos["x"]
-                        robot_y = robot_pos["y"]
-                        robot_dir = robot_pos["dir"]
-                        self.callback_queue.put(
-                            [self.path_planner.send_to_rpi_recalculated, [robot_x, robot_y, robot_dir]])
+                elif message_type_and_data["type"] == MessageType.UPDATE_ROBOT_POSE:
+                    self.on_receive_update_robot_pose(message_data)
 
-                elif message_dict["type"] == MessageType.IMAGE_TAKEN:
+                elif message_type_and_data["type"] == MessageType.IMAGE_TAKEN:
                     self.on_receive_image_taken_message(message_data)
 
             except (IndexError, ValueError) as e:
                 self.comms.send("Invalid command: " + txt)
                 print("Invalid command: " + txt)
+
+    def on_receive_start_task_message(self, message_data: dict):
+        task = message_data["task"]
+
+        if task == TaskType.TASK_EXPLORE:  # Week 8 Task
+            # Reset first
+            self.callback_queue.put(self.reset_button_clicked)
+
+            # Set robot starting pos
+            robot_params = message_data['robot']
+            logging.info("Setting robot position: %s", robot_params)
+            robot_x, robot_y, robot_dir = int(robot_params["x"]), int(robot_params["y"]), int(robot_params["dir"])
+
+            self.callback_queue.put([self.car.update_robot, [robot_dir, self.grid.grid_to_pixel((robot_x, robot_y))]])
+            self.callback_queue.put(self.car.redraw_car)
+
+            # Create obstacles given parameters
+            logging.info("Creating obstacles...")
+            for obstacle in message_data["obs"]:
+                logging.info("Obstacle: %s", obstacle)
+                id, grid_x, grid_y, dir = obstacle["id"], int(obstacle["x"]), int(obstacle["y"]), int(obstacle["dir"])
+                self.callback_queue.put([self.grid.create_obstacle, [grid_x, grid_y, dir]])
+
+            # Update grid, start explore
+            self.callback_queue.put(self.car.redraw_car)
+
+            logging.info("[AND] Doing path calculation...")
+            self.callback_queue.put(self.start_button_clicked)
+
+        elif task == TaskType.TASK_PATH:  # Week 9 Task
+            pass
+
+    def on_receive_update_robot_pose(self, message_data: dict):
+        print("Received updated robot pose")
+        # E.g. ROBOT/NEXT/3,3,90 or ROBOT/NEXT/NIL
+        status = message_data["status"]
+        robot_pos = message_data["robot"]
+        if status == "DONE":
+            self.callback_queue.put(self.path_planner.send_to_rpi)
+        else:
+            robot_x = robot_pos["x"]
+            robot_y = robot_pos["y"]
+            robot_dir = robot_pos["dir"]
+            self.callback_queue.put(
+                [self.path_planner.send_to_rpi_recalculated, [robot_x, robot_y, robot_dir]])
 
     def on_receive_image_taken_message(self, data_dict: dict):
         image = data_dict["image"]
@@ -252,37 +286,6 @@ class Simulator:
         # get first element that is not "Bullseye"
         else:
             return result[0]
-
-    def on_receive_start_task_message(self, data_dict: dict):
-        task = data_dict["task"]
-
-        if task == TaskType.TASK_EXPLORE:  # Week 8 Task
-            # Reset first
-            self.callback_queue.put(self.reset_button_clicked)
-
-            # Set robot starting pos
-            robot_params = data_dict['robot']
-            logging.info("Setting robot position: %s", robot_params)
-            robot_x, robot_y, robot_dir = int(robot_params["x"]), int(robot_params["y"]), int(robot_params["dir"])
-
-            self.callback_queue.put([self.car.update_robot, [robot_dir, self.grid.grid_to_pixel((robot_x, robot_y))]])
-            self.callback_queue.put(self.car.redraw_car)
-
-            # Create obstacles given parameters
-            logging.info("Creating obstacles...")
-            for obstacle in data_dict["obs"]:
-                logging.info("Obstacle: %s", obstacle)
-                id, grid_x, grid_y, dir = obstacle["id"], int(obstacle["x"]), int(obstacle["y"]), int(obstacle["dir"])
-                self.callback_queue.put([self.grid.create_obstacle, [grid_x, grid_y, dir]])
-
-            # Update grid, start explore
-            self.callback_queue.put(self.car.redraw_car)
-
-            logging.info("[AND] Doing path calculation...")
-            self.callback_queue.put(self.start_button_clicked)
-
-        elif task == TaskType.TASK_PATH:  # Week 9 Task
-            pass
 
     def reprint_screen_and_buttons(self):
         self.screen.fill(constants.GRAY)
