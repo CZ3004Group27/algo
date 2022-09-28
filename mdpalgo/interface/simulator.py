@@ -1,5 +1,4 @@
 import logging
-import glob
 import os
 import queue
 import threading
@@ -21,8 +20,8 @@ from imagerec.helpers import get_path_to
 # for image recognition
 from imagerec.infer import infer, get_image_from
 
-# for importing test image
-from PIL import Image
+# for saving the image
+import cv2
 
 # Set the HEIGHT and WIDTH of the screen
 WINDOW_SIZE = [960, 660]
@@ -274,10 +273,11 @@ class Simulator:
             image_name = "img_" + str(image_number)
 
         print("Image name:", image_name)
-        image.save(self.image_folder.joinpath(f"{image_name}.jpg"))
+        cv2.imwrite(self.image_folder.joinpath(f"{image_name}.jpg"), image)
         image_result_string = self.path_planner.get_image_result_string(target_id)
-        # send image result string to rpi
-        self.comms.send(image_result_string)
+        if constants.RPI_CONNECTED:
+            # send image result string to rpi
+            self.comms.send(image_result_string)
 
     def check_infer_result(self, infer_result: list):
         # remove all elements in infer_result that are "Bullseye"
@@ -311,11 +311,7 @@ class Simulator:
                     self.reset_button_clicked()
                 if button_func == "CONNECT":
                     print("Connect button pressed.")
-                    self.comms = AlgoClient()
-                    self.comms.connect()
-                    self.recv_thread = threading.Thread(target=self.receiving_process)
-                    constants.RPI_CONNECTED = True
-                    self.recv_thread.start()
+                    self.start_algo_client()
                 elif button_func == "DISCONNECT":
                     print("Disconnect button pressed.")
                     self.comms.disconnect()
@@ -388,7 +384,7 @@ if __name__ == "__main__":
     # Test the receiving image function
     image_folder = get_path_to(mdpalgo.images)
     image_path = image_folder.joinpath("img_1.jpg")
-    image = Image.open(image_path)
+    image = cv2.imread(image_path)
     data_dict = {"image": image}
     thread = threading.Thread(target=lambda: x.on_receive_image_taken_message(data_dict))
 
