@@ -4,7 +4,7 @@ setup(name='mdpalgo',
       version='1.0',
       description='Algorithm for MDP',
       author='Group 27',
-      packages=['mdpalgo'],
+      packages=['mdpalgo', 'fastestalgo'],
       install_requires=[
         'pygame',
         'networkx',
