@@ -2,6 +2,7 @@ import logging
 from mdpalgo.robot.robot import BorderException, CheckingException
 from mdpalgo.robot.robot import ObstacleException
 from mdpalgo.robot.robot import ObstacleTurnException
+from mdpalgo.robot.robot import Robot
 from mdpalgo.algorithm.fastest_path_planning import search
 from mdpalgo import constants
 from mdpalgo.map.configuration import Pose
@@ -11,7 +12,7 @@ MARGIN = 2
 
 class PathPlan(object):
 
-    def __init__(self, simulator, grid, robot, fastest_route):
+    def __init__(self, simulator, grid, robot: Robot, fastest_route):
         self.simulator = simulator
         self.grid = grid
         self.robot = robot
