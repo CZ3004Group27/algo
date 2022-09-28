@@ -206,6 +206,11 @@ class Simulator:
         infer_result = infer(image)
         try:
             target_id = self.check_infer_result(infer_result)
+
+            # reset exception count if there is an image result returned after retaking photo once
+            if self.no_image_result_count == 1:
+                self.no_image_result_count = 0
+
         except Exception as e:
             logging.exception(e)
             self.no_image_result_count += 1
