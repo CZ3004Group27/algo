@@ -4,6 +4,7 @@ from pygame.math import Vector2
 from mdpalgo import constants
 import pygame
 from mdpalgo.constants import BUFFER
+from mdpalgo.map.configuration import Pose
 
 # This sets the margin between each Cell
 MARGIN = 2
@@ -68,6 +69,9 @@ class Robot(object):
 
     def get_angle_of_rotation(self):
         return self.angle
+
+    def get_robot_pose(self) -> Pose:
+        return Pose([self.grid_x, self.grid_y, self.angle])
 
     def draw_car(self):
         if constants.HEADLESS:
