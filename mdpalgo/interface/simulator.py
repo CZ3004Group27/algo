@@ -252,6 +252,7 @@ class Simulator:
             # if no image result for 2 times, return early to prevent request photo loop
             if self.no_image_result_count == 2:
                 self.no_image_result_count = 0
+                self.path_planner.skip_current_target()
                 return
 
             self.path_planner.request_photo_from_rpi() # take photo again if exception raised
