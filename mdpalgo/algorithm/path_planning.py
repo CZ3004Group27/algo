@@ -99,11 +99,7 @@ class PathPlan(object):
                 if search_result is None:
                     # Skip this obstacle first
                     print("Search result: ", search_result, " ; Skipping obstacle...")
-                    self.skipped_obstacles.append(target)
-                    # Force run hardcoded path
-                    # print("Search result: ", search_result, " ; FORCING hardcoded path...")
-                    # self.plan_trip_by_robot_target_directions(self.target_x, self.target_y, self.robot_x, self.robot_y,
-                    #                                           self.robot_direction, self.target_direction)
+                    self.skip_current_target()
                 else:
                     # Execute gray route
                     draw_path, path = search_result[0], search_result[1]
@@ -127,6 +123,9 @@ class PathPlan(object):
                                                               self.robot.grid_y,
                                                               self.robot.angle, self.target_direction)
         self.restart_robot()
+
+    def skip_current_target(self):
+        self.skipped_obstacles.append(self.target)
 
     def restart_robot(self):
         if len(self.skipped_obstacles) == 0:
