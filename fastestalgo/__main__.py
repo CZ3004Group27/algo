@@ -38,7 +38,6 @@ class Week9Task:
                     self.on_receive_image_taken_message(message_data)
 
             except (IndexError, ValueError) as e:
-                self.comms.send("Invalid command: " + txt)
                 print("Invalid command: " + txt)
 
     def on_receive_image_taken_message(self, data_dict: dict):
