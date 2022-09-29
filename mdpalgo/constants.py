@@ -47,3 +47,8 @@ HEADLESS = False
 # Pathing center on obstacle
 CENTER_ON_OBS = False
 
+# WIFI server IP address
+RPI_IP = "192.168.27.27" # real RPi server
+TEST_IP = "127.0.0.1" # Use this for easier testing RPi integration without RPi
+WIFI_IP = RPI_IP
+PORT = 25565

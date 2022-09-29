@@ -6,6 +6,8 @@ import parse
 import base64
 import cv2
 import numpy as np
+from imagerec.helpers import convert_bgr_ndarray_to_rgb_image
+from PIL import Image
 
 class MessageType(Enum):
     """Message type is determined by the first token
@@ -142,7 +144,7 @@ class MessageParser:
         return data_dict
 
     def parse_image_taken(self, message:str) -> dict:
-        """Parse the image taken message to return the image
+        """Parse the image taken message to return the image as PIL Image.
 
         Example:
             >>> message = "PHOTODATA/<image_string>"
@@ -153,9 +155,11 @@ class MessageParser:
         data_dict = {}
         img_bytes = base64.b64decode(image_string.encode("utf-8"))
         jpg_as_np = np.frombuffer(img_bytes, dtype=np.uint8)
-        img = cv2.imdecode(jpg_as_np, cv2.IMREAD_COLOR)
+        bgr_array = cv2.imdecode(jpg_as_np, cv2.IMREAD_COLOR)
 
-        data_dict["image"] = img
+        rgb_image: Image.Image = convert_bgr_ndarray_to_rgb_image(bgr_array)
+
+        data_dict["image"] = rgb_image
         return data_dict
 
 if __name__ == "__main__":
