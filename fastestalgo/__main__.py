@@ -89,6 +89,10 @@ class Week9Task:
         if self.obstacle_id == 1:
             self.obstacle_id = 2
 
+        # run predict function after image result of obstacle 2 has been sent to rpi
+        elif self.obstacle_id == 2:
+            os.system(f'python -m imagerec.predict {self.image_folder}')
+
     def check_infer_result(self, infer_result: list):
         # remove all elements in infer_result that are "Bullseye"
         result = [elem for elem in infer_result if elem != "Bullseye"]
