@@ -104,12 +104,12 @@ class Week9Task:
         image_result_list = ["TARGET", target_id, self.obstacle_id]
         return '/'.join([str(elem) for elem in image_result_list])
 
+    def request_photo_from_rpi(self):
+        self.comms.send(self.get_take_photo_string())
+
     def get_take_photo_string(self):
         photo_list = ["PHOTO", self.obstacle_id]
         return '/'.join([str(elem) for elem in photo_list])
-
-    def request_photo_from_rpi(self):
-        self.comms.send(self.get_take_photo_string(self.obstacle_id))
 
 if __name__ == "__main__":
     X = Week9Task
