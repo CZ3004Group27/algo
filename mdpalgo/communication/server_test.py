@@ -7,19 +7,17 @@ This script is used to test the RPi server.
 
 import socket
 import threading
-#from misc.config import ALGO_SOCKET_BUFFER_SIZE, WIFI_IP, PORT, FORMAT
+import mdpalgo.constants as constants
 
 FORMAT = "UTF-8"
 ALGO_SOCKET_BUFFER_SIZE = 1024
-WIFI_IP = "127.0.0.1"
-PORT = 5050
 
 class Algorithm:
-    def __init__(self, host=WIFI_IP, port=PORT):
+    def __init__(self):
         print("[Algo] Initialising Algorithm Process")
 
-        self.host = host
-        self.port = port
+        self.host = constants.TEST_IP
+        self.port = constants.PORT
 
         self.address = None
         self.client_socket = None

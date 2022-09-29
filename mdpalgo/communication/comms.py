@@ -55,7 +55,8 @@ class AlgoClient:
                 if (len(message) <= MAX_MESSAGE_LENGTH_PRINT):
                     print(f'[Algo] Received Message from Algo Server: {message}')
                 else:
-                    print(f'[Algo] Received Long Message (likely image) from Algo Server: {message[:MAX_MESSAGE_LENGTH_PRINT]}')
+                    print(f'[Algo] Received Long Message (likely image) from Algo Server. '
+                        f'First {MAX_MESSAGE_LENGTH_PRINT} characters: {message[:MAX_MESSAGE_LENGTH_PRINT]}')
                 return message
             return None
         except Exception as error:
