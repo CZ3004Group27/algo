@@ -115,5 +115,16 @@ class Week9Task:
         return '/'.join([str(elem) for elem in photo_list])
 
 if __name__ == "__main__":
-    X = Week9Task
+    import argparse
+    # parse the arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--testwifi", help="use test wifi server on PC instead of real rpi",
+                    action="store_true")
+    args = parser.parse_args()
+
+    if args.testwifi:
+        constants.WIFI_IP = constants.TEST_IP
+        print("Use local IP address for integration testing without RPi")
+
+    X = Week9Task()
     X.run()
