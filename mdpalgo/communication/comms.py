@@ -3,34 +3,31 @@ Testing Algorithm Socket Only - Not used in production.
 """
 import socket
 import struct
-# from misc.config import FORMAT, ALGO_SOCKET_BUFFER_SIZE, WIFI_IP, PORT
-
-# Wifi IP: RPI's ip address -> 192.168.12.12
-# Port: 5050
+import mdpalgo.constants as constants
 
 FORMAT = "UTF-8"
 ALGO_SOCKET_BUFFER_SIZE = 1024
-
-RPI_IP = "192.168.27.27"
-TEST_IP = "127.0.0.1" # Use this for easier testing RPi integration without RPi
-
-WIFI_IP = RPI_IP
-PORT = 25565
-
+MAX_MESSAGE_LENGTH_PRINT = 200 # above this value, most likely image
 
 class AlgoClient:
 
-    def __init__(self, server_ip=WIFI_IP, server_port=PORT) -> None:
+    def __init__(self) -> None:
         print("[Algo Client] Initialising Algo Client.")
         self.client_socket = None
-        self.server_address = (server_ip, server_port)
+        self.server_address = None
+        self.server_ip = constants.WIFI_IP
+        self.server_port = constants.PORT
+        self.set_server_address()
         print("[Algo Client] Client has been initilised.")
+
+    def set_server_address(self):
+        self.server_address = (self.server_ip, self.server_port)
 
     def connect(self) -> bool:
         try:
             # Connect to RPI via TCP
             self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.client_socket.connect((WIFI_IP, PORT))
+            self.client_socket.connect(self.server_address)
             print(f"[Algo Client] Client successfully connected to Server at {self.server_address}.")
             return True
         except Exception as error:
@@ -55,7 +52,10 @@ class AlgoClient:
             raw_bytes = self.receive_message_with_size()
             if raw_bytes is not None:
                 message = self.decode(raw_bytes)
-                print(f'[Algo] Received Message from Algo Server: {message}')
+                if (len(message) <= MAX_MESSAGE_LENGTH_PRINT):
+                    print(f'[Algo] Received Message from Algo Server: {message}')
+                else:
+                    print(f'[Algo] Received Long Message (likely image) from Algo Server: {message[:MAX_MESSAGE_LENGTH_PRINT]}')
                 return message
             return None
         except Exception as error:
@@ -111,7 +111,7 @@ class AlgoClient:
 
 # Standalone testing.
 if __name__ == '__main__':
-    WIFI_IP = TEST_IP # use the testing IP
+    constants.WIFI_IP = constants.TEST_IP # use the testing IP
     client = AlgoClient()
     connect_status = client.connect()
     assert (connect_status) # if the server is up, this should be true
