@@ -223,7 +223,7 @@ class Simulator:
         print("Received updated robot pose")
         status = message_data["status"]
         if status == "DONE":
-            self.callback_queue.put(self.path_planner.send_to_rpi)
+            self.callback_queue.put(self.path_planner.request_photo_from_rpi)
         else:
             raise ValueError("Unimplemented response for updated robot pose")
 
@@ -245,6 +245,7 @@ class Simulator:
             if self.no_image_result_count == 2:
                 self.no_image_result_count = 0
                 self.path_planner.skip_current_target()
+                self.path_planner.send_to_rpi()
                 return
 
             self.path_planner.request_photo_from_rpi() # take photo again if exception raised
@@ -272,6 +273,7 @@ class Simulator:
         if constants.RPI_CONNECTED:
             # send image result string to rpi
             self.comms.send(image_result_string)
+            self.path_planner.send_to_rpi()
 
     def check_infer_result(self, infer_result: list):
         # remove all elements in infer_result that are "Bullseye"
