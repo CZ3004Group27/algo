@@ -361,8 +361,15 @@ class Simulator:
             self.path_planner = PathPlan(self, self.grid, self.car, optimized_fastest_route)
             self.path_planner.start_robot()
 
+            # Call predict function on finish
+            self.predict_on_finish()
+
         # if constants.RPI_CONNECTED:
         #     self.path_planner.send_to_rpi()
+
+    def predict_on_finish(self):
+        # call predict function after finishing task
+        os.system(f'python -m imagerec.predict {self.image_folder}')
 
     def reset_button_clicked(self):
         self.grid.reset(self.screen)
