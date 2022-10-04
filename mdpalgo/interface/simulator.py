@@ -221,17 +221,11 @@ class Simulator:
 
     def on_receive_update_robot_pose(self, message_data: dict):
         print("Received updated robot pose")
-        # E.g. ROBOT/NEXT/3,3,90 or ROBOT/NEXT/NIL
         status = message_data["status"]
-        robot_pos = message_data["robot"]
         if status == "DONE":
             self.callback_queue.put(self.path_planner.send_to_rpi)
         else:
-            robot_x = robot_pos["x"]
-            robot_y = robot_pos["y"]
-            robot_dir = robot_pos["dir"]
-            self.callback_queue.put(
-                [self.path_planner.send_to_rpi_recalculated, [robot_x, robot_y, robot_dir]])
+            raise ValueError("Unimplemented response for updated robot pose")
 
     def on_receive_image_taken_message(self, data_dict: dict):
         image = data_dict["image"]

@@ -30,7 +30,7 @@ class PathPlan(object):
         self.REPEATED_LAST_TARGET = 0
         self.IS_ON_PATH = False
         self.skipped_obstacles = []
-        self.obstacle_key = None # the current obstacle key
+        self.obstacle_key = None # the current obstacle key that RPi is going for
 
     def start_robot(self):
         # Remove robot starting position from fastest_route
@@ -1347,7 +1347,7 @@ class PathPlan(object):
         return '/'.join([str(elem) for elem in photo_list])
 
     def get_image_result_string(self, target_id):
-        image_result_list = ["TARGET", target_id, self.obstacle_cell.get_obstacle().get_obstacle_id()]
+        image_result_list = ["TARGET", target_id, self.obstacle_key]
         return '/'.join([str(elem) for elem in image_result_list])
 
     def check_reached_target(self, target_a, target_b):
@@ -1517,7 +1517,7 @@ class PathPlan(object):
         # self.move_backward_by(2)
 
         if self.obstacle_list_rpi:
-            obstacle_key = self.obstacle_list_rpi.pop(0)
+            self.obstacle_key = self.obstacle_list_rpi.pop(0)
             print("Remaining obstacles: ", self.obstacle_list_rpi)
             # Set robot position
             self.robot.grid_x = robot_x
@@ -1591,17 +1591,17 @@ class PathPlan(object):
                 print("test")
 
             # Change all movements dict and all robot pos dict for obstacle key replanned
-            self.all_movements_dict[obstacle_key] = self.get_movements_string()
-            self.all_robot_pos_dict[obstacle_key] = self.get_robot_pos_string()
-            self.all_take_photo_dict[obstacle_key] = self.get_take_photo_string()
+            self.all_movements_dict[self.obstacle_key] = self.get_movements_string()
+            self.all_robot_pos_dict[self.obstacle_key] = self.get_robot_pos_string()
+            self.all_take_photo_dict[self.obstacle_key] = self.get_take_photo_string()
             # Reset
             self.IS_ON_PATH = False
             self.reset_collection_of_movements()
             self.reset_robot_pos_list()
 
-            self.simulator.comms.send(self.all_robot_pos_dict[obstacle_key])
-            self.simulator.comms.send(self.all_movements_dict[obstacle_key])
-            self.simulator.comms.send(self.all_take_photo_dict[obstacle_key])
+            self.simulator.comms.send(self.all_robot_pos_dict[self.obstacle_key])
+            self.simulator.comms.send(self.all_movements_dict[self.obstacle_key])
+            self.simulator.comms.send(self.all_take_photo_dict[self.obstacle_key])
         else:
             self.simulator.comms.send("No more movements.")
 
