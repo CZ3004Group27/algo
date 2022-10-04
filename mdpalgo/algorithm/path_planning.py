@@ -1499,8 +1499,9 @@ class PathPlan(object):
             print("Remaining obstacles: ", self.obstacle_list_rpi)
             self.simulator.comms.send(self.all_robot_pos_dict[self.obstacle_key])
             self.simulator.comms.send(self.all_movements_dict[self.obstacle_key])
-            self.request_photo_from_rpi()
         else:
+            # Call predict function on finish
+            self.simulator.predict_on_finish()
             self.simulator.comms.send("No more movements.")
 
     def request_photo_from_rpi(self):
