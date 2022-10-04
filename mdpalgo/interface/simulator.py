@@ -362,7 +362,7 @@ class Simulator:
 
     def predict_on_finish(self):
         # call predict function after finishing task
-        os.system(f'python -m imagerec.predict {self.image_folder}')
+        os.system(f'python -m imagerec.predict \"{self.image_folder}\"')
 
     def reset_button_clicked(self):
         self.grid.reset(self.screen)
