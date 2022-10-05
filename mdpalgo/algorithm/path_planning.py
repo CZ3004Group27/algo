@@ -49,8 +49,7 @@ class PathPlan(object):
             target = self.fastest_route.pop(0)
             print("Current Target: ", target)
 
-            self.target_pose.set_pose(target[:3])
-            self.obstacle_cell = target[3]
+            self.get_target_pose_obstacle_cell_from(target)
 
             self.robot_pose = self.robot.get_robot_pose()
 
@@ -100,6 +99,14 @@ class PathPlan(object):
                                                               self.robot.angle, self.target_pose.direction)
         self.restart_robot()
 
+    def get_target_pose_obstacle_cell_from(self, target: list):
+        """Get the target pose and obstacle cell from a list of [x, y, dir, Cell]
+        """
+
+        self.target_pose.set_pose(target[:3])
+        self.obstacle_cell = target[3]
+
+
     def skip_current_target(self):
         self.skipped_obstacles.append(self.target_pose)
 
@@ -113,8 +120,7 @@ class PathPlan(object):
             target = self.skipped_obstacles.pop(0)
             print("Current Target: ", target)
 
-            self.target_pose.set_pose(target[:3])
-            self.obstacle_cell = target[3]
+            self.get_target_pose_obstacle_cell_from(target)
 
             self.robot_pose = self.robot.get_robot_pose()
 
@@ -1539,8 +1545,7 @@ class PathPlan(object):
             target = self.robot.optimized_target_locations[i:][0]
 
             # Replan path for this particular obstacle with new robot position
-            self.target_pose.set_pose(target[:3])
-            self.obstacle_cell = target[3]
+            self.get_target_pose_obstacle_cell_from(target)
 
             self.robot_pose = self.robot.get_robot_pose()
 
