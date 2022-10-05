@@ -42,36 +42,48 @@ class PathPlan(object):
 
         while len(self.fastest_route) != 0:
             count_of_obs += 1
-            if count_of_obs == 2:
+            target = self.fastest_route.pop(0)
+            self.plan_full_path_to(target)
+
+            if count_of_obs == 1:
                 if constants.RPI_CONNECTED:
                     self.send_to_rpi()
 
-            target = self.fastest_route.pop(0)
-            print("Current Target: ", target)
-
-            self.get_target_pose_obstacle_cell_from(target)
-
-            self.robot_pose = self.robot.get_robot_pose()
-
-            # if no obstacle exceptions, can use hardcoded shortest path
-            if self.check_movement_possible(self.target_pose.x, self.target_pose.y, self.robot_pose.x, self.robot_pose.y,
-                                            self.robot_pose.direction, self.target_pose.direction):
-                # Target Coordinates: (a, b); Robot Coordinates: (x, y)
-                self.plan_trip_by_robot_target_directions(self.target_pose.x, self.target_pose.y, self.robot_pose.x, self.robot_pose.y,
-                                                          self.robot_pose.direction, self.target_pose.direction)
-                continue
-
-            # else, plan a path using astar search on virtual grid
-            search_result = self.auto_search()
-            if search_result is None:
-                # Skip this obstacle first
-                print("Search result: ", search_result, " ; Skipping obstacle...")
-                self.skip_current_target()
-                continue
-
-            # Else, execute gray route
-            self.execute_auto_search_result(search_result)
         self.restart_robot()
+
+    def plan_full_path_to(self, target):
+        """target is a list [x, y, dir, Cell] where Cell is the obstacle cell
+        and (x, y, dir) is the target pose for the car to view the image tag
+        """
+        print("Current Target: ", target)
+
+        self.get_target_pose_obstacle_cell_from(target)
+        self.robot_pose = self.robot.get_robot_pose()
+
+        # if no obstacle exceptions, can use hardcoded shortest path
+        if self.check_movement_possible(self.target_pose.x, self.target_pose.y, self.robot_pose.x, self.robot_pose.y,
+                                        self.robot_pose.direction, self.target_pose.direction):
+            # Target Coordinates: (a, b); Robot Coordinates: (x, y)
+            self.plan_trip_by_robot_target_directions(self.target_pose.x, self.target_pose.y, self.robot_pose.x, self.robot_pose.y,
+                                                        self.robot_pose.direction, self.target_pose.direction)
+            return
+
+        # else, plan a path using astar search on virtual grid
+        search_result = self.auto_search()
+        if search_result is None:
+            # Skip this obstacle first
+            print("Search result: ", search_result, " ; Skipping obstacle...")
+            self.skip_current_target()
+            return
+
+        # Else, execute gray route
+        self.execute_auto_search_result(search_result)
+
+    def get_target_pose_obstacle_cell_from(self, target: list):
+        """Get the target pose and obstacle cell from a list of [x, y, dir, Cell]
+        """
+        self.target_pose.set_pose(target[:3])
+        self.obstacle_cell = target[3]
 
     def auto_search(self):
         """Do an astar search rather than hardcoding"""
@@ -86,14 +98,6 @@ class PathPlan(object):
 
         return search_result
 
-    def get_target_pose_obstacle_cell_from(self, target: list):
-        """Get the target pose and obstacle cell from a list of [x, y, dir, Cell]
-        """
-
-        self.target_pose.set_pose(target[:3])
-        self.obstacle_cell = target[3]
-
-
     def skip_current_target(self):
         self.skipped_obstacles.append(self.target_pose)
 
@@ -103,34 +107,8 @@ class PathPlan(object):
             return
 
         while len(self.skipped_obstacles) != 0:
-
             target = self.skipped_obstacles.pop(0)
-            print("Current Target: ", target)
-
-            self.get_target_pose_obstacle_cell_from(target)
-
-            self.robot_pose = self.robot.get_robot_pose()
-
-            # if no obstacle exceptions, can use hardcoded shortest path
-            if self.check_movement_possible(self.target_pose.x, self.target_pose.y, self.robot_pose.x, self.robot_pose.y,
-                                            self.robot_pose.direction, self.target_pose.direction):
-                # Target Coordinates: (a, b); Robot Coordinates: (x, y)
-                self.plan_trip_by_robot_target_directions(self.target_pose.x, self.target_pose.y, self.robot_pose.x, self.robot_pose.y,
-                                                          self.robot_pose.direction, self.target_pose.direction)
-                continue
-
-            # else, plan a path using astar search on virtual grid
-            search_result = self.auto_search()
-
-            if search_result is None:
-                # Force run hardcoded path
-                print("Search result: ", search_result, " ; FORCING hardcoded path...")
-                self.plan_trip_by_robot_target_directions(self.target_pose.x, self.target_pose.y, self.robot_pose.x, self.robot_pose.y,
-                                                            self.robot_pose.direction, self.target_pose.direction)
-                continue
-
-            # Execute gray route
-            self.execute_auto_search_result(search_result)
+            self.plan_full_path_to(target)
 
     def do_move(self, move):
         if move == "F":
@@ -1319,10 +1297,7 @@ class PathPlan(object):
     def check_reached_target(self, target_a, target_b):
         x, y = self.robot.get_grid_pos()[0], self.robot.get_grid_pos()[1]
         if target_a == x and target_b == y:
-            print(self.get_movements_string())
-            print(self.get_current_obstacle_id())
-            print(self.get_robot_pos_string())
-            print(self.get_take_photo_string())
+            self.print_info()
 
             # Add into dictionary
             self.all_movements_dict[self.get_current_obstacle_id()] = self.get_movements_string()
@@ -1453,11 +1428,14 @@ class PathPlan(object):
             #self.move_backward_by(2)
 
             return True
+        self.print_info()
+        return False
+
+    def print_info(self):
         print(self.get_movements_string())
         print(self.get_current_obstacle_id())
         print(self.get_robot_pos_string())
         print(self.get_take_photo_string())
-        return False
 
     def send_to_rpi(self):
         if not self.obstacle_list_rpi:
@@ -1523,31 +1501,7 @@ class PathPlan(object):
         i = 0 - len(self.obstacle_list_rpi) - 1
         target = self.robot.optimized_target_locations[i:][0]
 
-        # Replan path for this particular obstacle with new robot position
-        self.get_target_pose_obstacle_cell_from(target)
-
-        self.robot_pose = self.robot.get_robot_pose()
-
-        # if no obstacle exceptions, can use hardcoded shortest path
-        if self.check_movement_possible(self.target_pose.x, self.target_pose.y, self.robot_pose.x, self.robot_pose.y,
-                                        self.robot_pose.direction, self.target_pose.direction):
-            # Target Coordinates: (a, b); Robot Coordinates: (x, y)
-            self.plan_trip_by_robot_target_directions(self.target_pose.x, self.target_pose.y, self.robot_pose.x, self.robot_pose.y,
-                                                        self.robot_pose.direction, self.target_pose.direction)
-
-
-        # else, plan a path using astar search on virtual grid
-        else:
-            search_result = self.auto_search()
-
-            if search_result is None:
-                # Force run hardcoded path
-                print("Search result: ", search_result, " ; FORCING hardcoded path...")
-                self.plan_trip_by_robot_target_directions(self.target_pose.x, self.target_pose.y, self.robot_pose.x, self.robot_pose.y,
-                                                            self.robot_pose.direction, self.target_pose.direction)
-            else:
-                self.execute_auto_search_result(search_result)
-
+        self.plan_full_path_to(target)
 
         # Change all movements dict and all robot pos dict for obstacle key replanned
         self.all_movements_dict[self.obstacle_key] = self.get_movements_string()
@@ -1571,7 +1525,6 @@ class PathPlan(object):
         # Colour rough route gray
         self.robot.redraw_car()
 
-        self.IS_ON_PATH = True
         movements = self.translate_path_to_movements(path)
         for move in movements:
             self.do_move(move)
