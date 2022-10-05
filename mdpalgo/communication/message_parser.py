@@ -123,9 +123,9 @@ class MessageParser:
         Example:
             >>> message = "DONE/5/9-8"
             >>> parse_update_robot_pose(message)
-            {"status": "DONE", "obstacle_key": {"x": 9, "y": 8}}
+            {"status": "DONE", "num_move", "obstacle_key": {"x": 9, "y": 8}}
         """
-        self.update_robot_pose_pattern = parse.compile("{status:w}/{nmove:d}/{x:d}-{y:d}")
+        self.update_robot_pose_pattern = parse.compile("{status:w}/{num_move:d}/{x:d}-{y:d}")
         parse_result = self.update_robot_pose_pattern.parse(message)
         if not parse_result:
            raise ValueError("Message is not in the correct format of update robot pose")
@@ -133,6 +133,7 @@ class MessageParser:
         try:
             data_dict = {}
             data_dict["status"] = parse_result["status"]
+            data_dict["num_move"] = parse_result["num_move"]
             data_dict["obstacle_key"] = {key: parse_result[key] for key in ["x", "y"]}
         except KeyError:
             raise ValueError("Message is not in the correct format of update robot pose")
@@ -192,6 +193,7 @@ if __name__ == "__main__":
         'type': MessageType.UPDATE_ROBOT_POSE,
         'data': {
             "status": "DONE",
+            "num_move": 5,
             "obstacle_key": {"x": 9, "y": 8}
         }
     }

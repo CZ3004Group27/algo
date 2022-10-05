@@ -31,6 +31,8 @@ class PathPlan(object):
         self.IS_ON_PATH = False
         self.skipped_obstacles = []
         self.obstacle_key = None # the current obstacle key that RPi is going for
+        self.num_move_completed_rpi = 0 # completed num moves by RPi to self.obstacle_key
+        self.total_num_move_required_rpi = 0 # total required num moves by RPi to self.obstacle_key
 
     def start_robot(self):
         # Remove robot starting position from fastest_route
@@ -1496,6 +1498,8 @@ class PathPlan(object):
     def send_to_rpi(self):
         if self.obstacle_list_rpi:
             self.obstacle_key = self.obstacle_list_rpi.pop(0)
+            self.reset_num_move_completed_rpi()
+            self.total_num_move_required_rpi = len(self.all_movements_dict[self.obstacle_key])
             print("Remaining obstacles: ", self.obstacle_list_rpi)
             self.simulator.comms.send(self.all_robot_pos_dict[self.obstacle_key])
             self.simulator.comms.send(self.all_movements_dict[self.obstacle_key])
@@ -1503,6 +1507,15 @@ class PathPlan(object):
             # Call predict function on finish
             self.simulator.predict_on_finish()
             self.simulator.comms.send("No more movements.")
+
+    def reset_num_move_completed_rpi(self):
+        self.num_move_completed_rpi = 0
+
+    def update_num_move_completed(self, num_moves_completed: int):
+        self.num_move_completed_rpi += num_moves_completed
+
+    def is_move_to_current_obstacle_done(self) -> bool:
+        return self.num_move_completed_rpi == self.num_move_required_rpi
 
     def request_photo_from_rpi(self):
         self.simulator.comms.send(self.all_take_photo_dict[self.obstacle_key])
@@ -1600,6 +1613,8 @@ class PathPlan(object):
             self.reset_collection_of_movements()
             self.reset_robot_pos_list()
 
+            self.reset_num_move_completed_rpi()
+            self.total_num_move_required_rpi = len(self.all_movements_dict[self.obstacle_key])
             self.simulator.comms.send(self.all_robot_pos_dict[self.obstacle_key])
             self.simulator.comms.send(self.all_movements_dict[self.obstacle_key])
             self.simulator.comms.send(self.all_take_photo_dict[self.obstacle_key])

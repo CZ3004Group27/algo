@@ -223,7 +223,9 @@ class Simulator:
         print("Received updated robot pose")
         status = message_data["status"]
         if status == "DONE":
-            self.callback_queue.put(self.path_planner.request_photo_from_rpi)
+            self.path_planner.update_num_move_completed(message_data["num_move"])
+            if self.path_planner.is_move_to_current_obstacle_done():
+                self.path_planner.request_photo_from_rpi()
         else:
             raise ValueError("Unimplemented response for updated robot pose")
 
