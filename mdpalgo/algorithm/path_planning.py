@@ -1499,14 +1499,14 @@ class PathPlan(object):
         if self.obstacle_list_rpi:
             self.obstacle_key = self.obstacle_list_rpi.pop(0)
             self.reset_num_move_completed_rpi()
-            self.total_num_move_required_rpi = len(self.all_movements_dict[self.obstacle_key])
+            self.total_num_move_required_rpi = len(self.all_movements_dict[self.obstacle_key].split("/")[-1].split(","))
             print("Remaining obstacles: ", self.obstacle_list_rpi)
             self.simulator.comms.send(self.all_robot_pos_dict[self.obstacle_key])
             self.simulator.comms.send(self.all_movements_dict[self.obstacle_key])
         else:
             # Call predict function on finish
             self.simulator.predict_on_finish()
-            self.simulator.comms.send("No more movements.")
+            self.simulator.comms.send("FINISH/EXPLORE")
 
     def reset_num_move_completed_rpi(self):
         self.num_move_completed_rpi = 0
@@ -1515,7 +1515,7 @@ class PathPlan(object):
         self.num_move_completed_rpi += num_moves_completed
 
     def is_move_to_current_obstacle_done(self) -> bool:
-        return self.num_move_completed_rpi == self.num_move_required_rpi
+        return self.num_move_completed_rpi == self.total_num_move_required_rpi
 
     def request_photo_from_rpi(self):
         self.simulator.comms.send(self.all_take_photo_dict[self.obstacle_key])
@@ -1614,7 +1614,7 @@ class PathPlan(object):
             self.reset_robot_pos_list()
 
             self.reset_num_move_completed_rpi()
-            self.total_num_move_required_rpi = len(self.all_movements_dict[self.obstacle_key])
+            self.total_num_move_required_rpi = len(self.all_movements_dict[self.obstacle_key].split("/")[-1].split(","))
             self.simulator.comms.send(self.all_robot_pos_dict[self.obstacle_key])
             self.simulator.comms.send(self.all_movements_dict[self.obstacle_key])
             self.simulator.comms.send(self.all_take_photo_dict[self.obstacle_key])
