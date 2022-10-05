@@ -38,10 +38,6 @@ class PathPlan(object):
         # Remove robot starting position from fastest_route
         self.fastest_route.pop(0)
 
-        # Using this cannot reset the robot position at the checking function
-        # route = self.brute_force_possible_path()
-        # self.fastest_route = route
-
         count_of_obs = 0
 
         while len(self.fastest_route) != 0:
