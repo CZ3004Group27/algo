@@ -384,7 +384,8 @@ if __name__ == "__main__":
     thread.start()
 
     # Test the receiving image function
-    image_folder = get_path_to(mdpalgo.images)
+    import mdpalgo.tests.images
+    image_folder = get_path_to(mdpalgo.tests.images)
     image_path = image_folder.joinpath("img_1.jpg")
     with Image.open(image_path) as image:
         image.load()

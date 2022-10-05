@@ -199,7 +199,9 @@ if __name__ == "__main__":
     }
 
     # Test the method to parse image
-    original_image = cv2.imread("catimage.jpg")
+    import mdpalgo.tests.images as test_images
+    from imagerec.helpers import get_path_to
+    original_image = cv2.imread(f'{get_path_to(test_images).joinpath("catimage.jpg")}')
     buffer = cv2.imencode('.jpg', original_image)[1].tobytes()
     message = "PHOTODATA/" + base64.b64encode(buffer).decode("utf-8")
     message_data = parser.parse(message)
