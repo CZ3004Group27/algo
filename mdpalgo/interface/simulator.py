@@ -18,7 +18,7 @@ import mdpalgo.images
 from imagerec.helpers import get_path_to
 
 # for image recognition
-from imagerec.infer import infer, get_image_from
+from imagerec.infer import infer
 
 # for saving the image
 from PIL import Image
@@ -358,9 +358,6 @@ class Simulator:
             # Path finding
             self.path_planner = PathPlan(self, self.grid, self.car, optimized_fastest_route)
             self.path_planner.start_robot()
-
-        # if constants.RPI_CONNECTED:
-        #     self.path_planner.send_to_rpi()
 
     def predict_on_finish(self):
         # call predict function after finishing task
