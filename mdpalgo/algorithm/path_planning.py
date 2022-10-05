@@ -1506,7 +1506,7 @@ class PathPlan(object):
         else:
             # Call predict function on finish
             self.simulator.predict_on_finish()
-            self.simulator.comms.send("FINISH/EXPLORE")
+            self.simulator.comms.send("FINISH/EXPLORE/")
 
     def reset_num_move_completed_rpi(self):
         self.num_move_completed_rpi = 0
