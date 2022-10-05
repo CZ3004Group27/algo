@@ -13,7 +13,7 @@ class MessageType(Enum):
     """Message type is determined by the first token
     """
     START_TASK = "START" # first token is "START"
-    UPDATE_ROBOT_POSE = "ROBOT" # current pose of the robot
+    UPDATE_ROBOT_POSE = "DONE" # current pose of the robot
     IMAGE_TAKEN = "PHOTODATA" # the photo taken by the robot
 
 class TaskType(Enum):
@@ -121,23 +121,19 @@ class MessageParser:
         manipulation
 
         Example:
-            >>> message = "ROBOT/NEXT/DONE/3,3,90"
+            >>> message = "DONE/5/9-8"
             >>> parse_update_robot_pose(message)
-            {"command": "NEXT", "status": "DONE", "robot": {"x": 3, "y": 3, "dir": 90}}
-            >>> message = "ROBOT/NEXT/EARLYFINISH/3,3,90"
-            >>> parse_update_robot_pose(message)
-            {"command": "NEXT", "status": "EARLYFINISH", "robot": {"x": 3, "y": 3, "dir": 90}}
+            {"status": "DONE", "obstacle_key": {"x": 9, "y": 8}}
         """
-        self.update_robot_pose_pattern = parse.compile("{}/{command:w}/{status:w}/{x:d},{y:d},{dir:d}")
+        self.update_robot_pose_pattern = parse.compile("{status:w}/{nmove:d}/{x:d}-{y:d}")
         parse_result = self.update_robot_pose_pattern.parse(message)
         if not parse_result:
            raise ValueError("Message is not in the correct format of update robot pose")
 
         try:
             data_dict = {}
-            data_dict["command"] = parse_result["command"]
             data_dict["status"] = parse_result["status"]
-            data_dict["robot"] = {key: parse_result[key] for key in ["x", "y", "dir"]}
+            data_dict["obstacle_key"] = {key: parse_result[key] for key in ["x", "y"]}
         except KeyError:
             raise ValueError("Message is not in the correct format of update robot pose")
 
@@ -191,24 +187,12 @@ if __name__ == "__main__":
     }
 
     # Test the method to parse UPDATE robot pose after done with movements and pictures
-    message = "ROBOT/NEXT/DONE/3,3,90"
+    message = "DONE/5/9-8"
     assert parser.parse(message) == {
         'type': MessageType.UPDATE_ROBOT_POSE,
         'data': {
-            "command": "NEXT",
             "status": "DONE",
-            "robot": {"x": 3, "y": 3, "dir": 90}
-        }
-    }
-
-    # Test the method to parse UPDATE robot pose after early finish pictures
-    message = "ROBOT/NEXT/EARLYFINISH/3,3,90"
-    assert parser.parse(message) == {
-        'type': MessageType.UPDATE_ROBOT_POSE,
-        'data': {
-            "command": "NEXT",
-            "status": "EARLYFINISH",
-            "robot": {"x": 3, "y": 3, "dir": 90}
+            "obstacle_key": {"x": 9, "y": 8}
         }
     }
 
@@ -218,5 +202,4 @@ if __name__ == "__main__":
     message = "PHOTODATA/" + base64.b64encode(buffer).decode("utf-8")
     message_data = parser.parse(message)
     assert message_data["type"] == MessageType.IMAGE_TAKEN
-    assert type(message_data["data"]["image"]) == np.ndarray
-    assert message_data["data"]["image"].shape == original_image.shape
+    assert type(message_data["data"]["image"]) == Image.Image

@@ -221,17 +221,11 @@ class Simulator:
 
     def on_receive_update_robot_pose(self, message_data: dict):
         print("Received updated robot pose")
-        # E.g. ROBOT/NEXT/3,3,90 or ROBOT/NEXT/NIL
         status = message_data["status"]
-        robot_pos = message_data["robot"]
         if status == "DONE":
-            self.callback_queue.put(self.path_planner.send_to_rpi)
+            self.callback_queue.put(self.path_planner.request_photo_from_rpi)
         else:
-            robot_x = robot_pos["x"]
-            robot_y = robot_pos["y"]
-            robot_dir = robot_pos["dir"]
-            self.callback_queue.put(
-                [self.path_planner.send_to_rpi_recalculated, [robot_x, robot_y, robot_dir]])
+            raise ValueError("Unimplemented response for updated robot pose")
 
     def on_receive_image_taken_message(self, data_dict: dict):
         image = data_dict["image"]
@@ -251,6 +245,7 @@ class Simulator:
             if self.no_image_result_count == 2:
                 self.no_image_result_count = 0
                 self.path_planner.skip_current_target()
+                self.path_planner.send_to_rpi()
                 return
 
             self.path_planner.request_photo_from_rpi() # take photo again if exception raised
@@ -278,6 +273,7 @@ class Simulator:
         if constants.RPI_CONNECTED:
             # send image result string to rpi
             self.comms.send(image_result_string)
+            self.path_planner.send_to_rpi()
 
     def check_infer_result(self, infer_result: list):
         # remove all elements in infer_result that are "Bullseye"
@@ -361,15 +357,12 @@ class Simulator:
             self.path_planner = PathPlan(self, self.grid, self.car, optimized_fastest_route)
             self.path_planner.start_robot()
 
-            # Call predict function on finish
-            self.predict_on_finish()
-
         # if constants.RPI_CONNECTED:
         #     self.path_planner.send_to_rpi()
 
     def predict_on_finish(self):
         # call predict function after finishing task
-        os.system(f'python -m imagerec.predict {self.image_folder}')
+        os.system(f'python -m imagerec.predict \"{self.image_folder}\"')
 
     def reset_button_clicked(self):
         self.grid.reset(self.screen)
