@@ -1294,7 +1294,7 @@ class PathPlan(object):
 
     def get_image_result_string(self, target_id):
         image_result_list = ["TARGET", target_id, self.obstacle_key]
-        return '/'.join([str(elem) for elem in image_result_list])
+        return '/'.join([str(elem) for elem in image_result_list]) + '/'
 
     def check_reached_target(self, target_a, target_b):
         x, y = self.robot.get_grid_pos()[0], self.robot.get_grid_pos()[1]
