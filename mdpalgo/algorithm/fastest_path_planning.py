@@ -370,7 +370,7 @@ class AutoPlanner():
             constants.EAST: np.array([[0, 1],
                                       [-1, 0]]),
             constants.WEST: np.array([[0, -1],
-                                      [1, 1]]),
+                                      [1, 0]]),
         }
 
         # turning cost = straight cost * turning factor
@@ -623,4 +623,16 @@ if __name__ == "__main__":
         print(f"Child: (x, y, dir) = ({node.pose.x}, {node.pose.y}, {node.pose.direction})")
     search_result = auto_planner.search_path(maze, cost, start, end)
     print(search_result)
-    assert search_result == ['F', 'FR', 'F', 'F', 'BR', 'F', 'F']
+    assert search_result == ['F', 'F', 'F', 'BR', 'B', 'B', 'FR']
+
+    # test the transformation methods
+    relative_vector = auto_planner.map_move_to_relative_displacement[RobotMovement.FORWARD]
+
+    abs_vector = auto_planner.get_absolute_vector(relative_vector, constants.NORTH)
+    assert (abs_vector == np.array([0, 1])).all()
+    abs_vector = auto_planner.get_absolute_vector(relative_vector, constants.SOUTH)
+    assert (abs_vector == np.array([0, -1])).all()
+    abs_vector = auto_planner.get_absolute_vector(relative_vector, constants.WEST)
+    assert (abs_vector == np.array([-1, 0])).all()
+    abs_vector = auto_planner.get_absolute_vector(relative_vector, constants.EAST)
+    assert (abs_vector == np.array([1, 0])).all()
