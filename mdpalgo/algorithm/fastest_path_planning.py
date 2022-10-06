@@ -636,3 +636,14 @@ if __name__ == "__main__":
     assert (abs_vector == np.array([-1, 0])).all()
     abs_vector = auto_planner.get_absolute_vector(relative_vector, constants.EAST)
     assert (abs_vector == np.array([1, 0])).all()
+
+    relative_vector = auto_planner.map_move_to_relative_displacement[RobotMovement.BACKWARD_LEFT]
+
+    abs_vector = auto_planner.get_absolute_vector(relative_vector, constants.NORTH)
+    assert (abs_vector == np.array([-3, -3])).all()
+    abs_vector = auto_planner.get_absolute_vector(relative_vector, constants.SOUTH)
+    assert (abs_vector == np.array([3, 3])).all()
+    abs_vector = auto_planner.get_absolute_vector(relative_vector, constants.WEST)
+    assert (abs_vector == np.array([3, -3])).all()
+    abs_vector = auto_planner.get_absolute_vector(relative_vector, constants.EAST)
+    assert (abs_vector == np.array([-3, 3])).all()
