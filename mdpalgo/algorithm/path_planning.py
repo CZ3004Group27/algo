@@ -3,7 +3,8 @@ from mdpalgo.robot.robot import BorderException, CheckingException
 from mdpalgo.robot.robot import ObstacleException
 from mdpalgo.robot.robot import ObstacleTurnException
 from mdpalgo.robot.robot import Robot
-from mdpalgo.algorithm.fastest_path_planning import search
+from mdpalgo.algorithm.fastest_path_planning import AutoPlanner, search
+import numpy as np
 from mdpalgo import constants
 from mdpalgo.map.configuration import Pose
 
@@ -33,6 +34,7 @@ class PathPlan(object):
         self.obstacle_key = None # the current obstacle key that RPi is going for
         self.num_move_completed_rpi = 0 # completed num moves by RPi to self.obstacle_key
         self.total_num_move_required_rpi = 0 # total required num moves by RPi to self.obstacle_key
+        self.auto_planner = AutoPlanner()
 
     def start_robot(self):
         # Remove robot starting position from fastest_route
@@ -87,14 +89,13 @@ class PathPlan(object):
 
     def auto_search(self):
         """Do an astar search rather than hardcoding"""
-        # x-coord = column; y-coord = 19-row
-        start = [19 - self.robot.grid_y, self.robot.grid_x, self.robot.angle]
-        end = [19 - self.target_pose.y,
-                self.target_pose.x,
+        start = [self.robot.grid_x, self.robot.grid_y, self.robot.angle]
+        end = [self.target_pose.x,
+                self.target_pose.y,
                 self.target_pose.direction]  # ending position
         cost = 10  # cost per movement
-        maze = self.grid.cells_virtual
-        search_result = search(maze, cost, start, end)
+        maze = rotate_maze(self.grid.cells_virtual)
+        search_result = self.auto_planner.search_path(maze, cost, start, end)
 
         return search_result
 
@@ -1681,3 +1682,23 @@ class PathPlan(object):
             constants.IS_CHECKING = False
             print("Check-fail:", area)
             return False
+
+def rotate_maze(maze)->np.ndarray:
+    """Rotate the axes by 270 degrees to keep it consistent with model of the
+    robot zone
+
+    Origin: bottom left corner of the map
+    x-axis: to the right
+    y-axis: upwards
+    """
+    return np.rot90(maze, 3)
+
+if __name__ == "__main__":
+    raw_maze = [[1,2,3],
+                [4,5,6],
+                [7,8,9]]
+    flipped_maze = rotate_maze(raw_maze)
+    assert flipped_maze[1][2] == 2
+    assert flipped_maze == np.array([[7,4,1],
+                                     [8,5,2],
+                                     [9,6,3]])

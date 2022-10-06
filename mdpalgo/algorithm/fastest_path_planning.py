@@ -1,8 +1,18 @@
+from queue import PriorityQueue
 import numpy as np
 
 from mdpalgo import constants
-from mdpalgo.map.cell import CellStatus
+from mdpalgo.map.cell import Cell, CellStatus
+from mdpalgo.map.configuration import Pose
+from enum import Enum
 
+class RobotMovement(Enum):
+    FORWARD = "F"
+    BACKWARD = "B"
+    FORWARD_RIGHT = "FR"
+    FORWARD_LEFT = "FL"
+    BACKWARD_RIGHT = "BR"
+    BACKWARD_LEFT = "BL"
 
 class Node:
     """
@@ -302,3 +312,265 @@ def search(maze, cost, start, end):
 
             # Add the child to the yet_to_visit list
             yet_to_visit_list.append(child)
+
+class ImprovedNode:
+    """
+        A node class for A* Pathfinding
+        parent is parent of the current Node
+        position is current position of the Node in the maze
+        g is cost from start to current Node
+        h is heuristic based estimated cost for current Node to end Node
+        f is total cost of present node i.e. :  f = g + h
+    """
+
+    def __init__(self, parent=None, pose:list=None):
+        self.parent = parent
+        self.pose = Pose(pose)
+
+        self.g = 0
+        self.h = 0
+        self.f = 0
+
+
+class AutoPlanner():
+    def __init__(self):
+        # map movement to a relative vector wrt the current direction
+        self.map_move_to_relative_displacement =  {RobotMovement.FORWARD: [0, 1],
+                                RobotMovement.BACKWARD: [0, -1],
+                                RobotMovement.FORWARD_RIGHT: [3, 3],
+                                RobotMovement.FORWARD_LEFT: [-3, 3],
+                                RobotMovement.BACKWARD_RIGHT: [3, -3],
+                                RobotMovement.BACKWARD_LEFT: [-3, -3],
+                                }
+        self.map_move_to_relative_direction = {
+                                RobotMovement.FORWARD: constants.NORTH,
+                                RobotMovement.BACKWARD: constants.NORTH,
+                                RobotMovement.FORWARD_RIGHT: constants.EAST,
+                                RobotMovement.FORWARD_LEFT: constants.WEST,
+                                RobotMovement.BACKWARD_RIGHT: constants.WEST,
+                                RobotMovement.BACKWARD_LEFT: constants.EAST,
+                                }
+        self.collision_statuses = [CellStatus.BOUNDARY, CellStatus.OBS, CellStatus.VISITED_OBS]
+
+        # change the current direction to rotation matrix
+        self.direction_to_rotation_matrixes = {
+            constants.NORTH: np.array([[1, 0],
+                                       [0, 1]]),
+            constants.SOUTH: np.array([[-1, 0],
+                                       [0, -1]]),
+            constants.EAST: np.array([[0, 1],
+                                      [-1, 0]]),
+            constants.WEST: np.array([[0, -1],
+                                      [1, 1]]),
+        }
+
+    def initialize_node(self, node_position: list) -> Node:
+        """f, h, g are all initialized to 0"""
+        return Node(None, tuple(node_position))
+
+    def initialize_counters(self):
+        """Initialize the counters used to halt the algorithm"""
+        self.outer_iterations = 0
+
+    def increment_counters(self):
+        self.outer_iterations += 1
+
+    def set_max_iterations(self):
+        self.max_iterations = (len(self.maze) // 2) ** 10
+
+    def does_iterations_exceed_max(self):
+        return self.outer_iterations > self.max_iterations
+
+    def initialize_yet_to_visit(self):
+        # in this list we will put all node that are yet_to_visit for exploration.
+        # From here we will find the lowest cost node to expand next
+        self.yet_to_visit = PriorityQueue()
+
+    def initialize_visited_list(self):
+        # in this list we will put all node those already explored so that we
+        # don't explore it again
+        self.visited_list = []
+
+    def add_node_to_yet_to_visit(self, node: ImprovedNode):
+        self.yet_to_visit.put((node.f, node))
+
+    def get_node_from_yet_to_visit(self) -> ImprovedNode:
+        """Remove and return the node with lowest f from queue"""
+        return self.yet_to_visit.get()[1]
+
+    def is_yet_to_visit_empty(self):
+        return self.yet_to_visit.empty()
+
+    def set_maze(self, maze):
+        self.maze = maze
+        self.get_maze_sizes()
+
+    def get_maze_sizes(self):
+        self.size_x, self.size_y = np.shape(self.maze)
+
+    def is_in_collision(self, node: ImprovedNode) -> bool:
+        return self.maze[node.pose.x][node.pose.y] in self.collision_statuses
+
+    def is_goal_reached(self) -> bool:
+        return self.current_node.pose == self.end_node.pose
+
+    def add_node_to_visited(self, node: ImprovedNode):
+        self.visited_list.append(node)
+
+    def is_robot_within_boundary_at_node(self, node: ImprovedNode):
+        """Check if the robot will be within boundary if staying in this
+        node"""
+        right_boundary = self.size_x-2 # right most node that robot is not out of maze
+        top_boundary = self.size_y-2 # top most node that robot is not out of maze
+        return (1 <= node.pose.x <= right_boundary) and (1 <= node.pose.y <= top_boundary)
+
+    def get_children_of_current_node(self):
+        # Generate children from all adjacent squares
+        self.children_current_node = []
+        i = 0
+
+        for move in self.map_move_to_relative_displacement:
+            new_node = self.get_child_node_after_move(move)
+
+            i += 1
+            # Make sure within range (check if within maze boundary)
+            if not self.is_robot_within_boundary_at_node(new_node):
+                continue
+
+            # Make sure walkable terrain
+            if self.is_in_collision(self.current_node):
+                continue
+
+            # Append
+            self.children_current_node.append(new_node)
+
+    def get_child_node_after_move(self, move: RobotMovement):
+        relative_displacement = self.map_move_to_relative_displacement[move]
+        displacement_from_current_node = self.get_absolute_vector(relative_displacement, self.current_node.pose.direction)
+
+        relative_direction_from_current_node = self.map_move_to_relative_direction[move]
+        # Get node position
+        node_position = [
+            self.current_node.pose.x + displacement_from_current_node[0],
+            self.current_node.pose.y + displacement_from_current_node[1],
+            self.get_absolute_direction(relative_direction_from_current_node, self.current_node.pose.direction)]
+        return ImprovedNode(self.current_node, node_position)
+
+    def get_absolute_direction(self, relative_direction: int, current_direction: int) -> int:
+        resultant_direction = relative_direction + current_direction
+        if resultant_direction > 180:
+            return resultant_direction - 360
+        elif resultant_direction <= -180:
+            return resultant_direction + 360
+        return resultant_direction
+
+    def get_absolute_vector(self, relative_vector: list, current_direction) -> list:
+        rotation_matrix = self.direction_to_rotation_matrixes[current_direction]
+        return np.matmul(rotation_matrix, relative_vector).astype(int)
+
+
+    def is_node_already_visited(self, node: ImprovedNode):
+        return len([visited_child for visited_child in self.visited_list if visited_child.pose == node.pose]) > 0
+
+    def heuristics(self, node: ImprovedNode):
+        """Return estimated cost to go to the end node"""
+        xA, yA = node.pose.x, node.pose.y
+        xB, yB = self.end_node.pose.x, self.end_node.pose.y
+        return abs(xA - xB) + abs(yA - yB)
+
+    def is_node_higher_cost_yet_to_visit(self, node: ImprovedNode):
+        return len([i for i in self.yet_to_visit.queue if node.pose == i[1].pose and node.g > i[1].g]) > 0
+
+    def get_cost_current_node_to_child(self, node: ImprovedNode) -> int:
+        raise NotImplementedError
+
+    def search_path(self, maze, cost, start, end):
+        self.set_maze(maze)
+        # Create start and end node with initialized values for g, h and f
+        self.start_node = self.initialize_node(start)
+        self.end_node = self.initialize_node(end)
+
+        self.initialize_yet_to_visit()
+        self.initialize_visited_list()
+
+        self.add_node_to_yet_to_visit(self.start_node)
+
+        # Adding a stop condition. This is to avoid any infinite loop and stop
+        # execution after some reasonable number of steps
+        self.initialize_counters()
+        self.set_max_iterations()
+
+        # Loop until you find the end
+
+        while not self.is_yet_to_visit_empty():
+
+            # Every time any node is referred from yet_to_visit list, counter of limit operation incremented
+            self.increment_counters()
+
+            self.current_node = self.get_node_from_yet_to_visit()
+
+            # if we hit this point return the path such as it may be no solution or
+            # computation cost is too high
+            if self.does_iterations_exceed_max():
+                print("Giving up on pathfinding too many iterations")
+                break
+
+            self.add_node_to_visited(self.current_node)
+
+            # test if goal is reached or not, if yes then return the path
+            if self.is_goal_reached():
+                break
+
+            self.get_children_of_current_node()
+
+            # Loop through children
+            for child in self.children_current_node:
+                tempCost = cost
+
+                # Child is on the visited list (search entire visited list)
+                if self.is_node_already_visited(child):
+                    continue
+
+                tempCost = self.get_cost_current_node_to_child(child)
+
+                # Create the f, g, and h values
+                child.g = self.current_node.g + tempCost
+
+                # Heuristic costs calculated here, this is using MANHATTAN distance
+                child.h = self.heuristics(child)
+
+                child.f = child.g + child.h
+
+                # Child is already in the yet_to_visit list and child has
+                # higher g cost than that in yet_to_visit
+                if self.is_node_higher_cost_yet_to_visit():
+                    continue
+
+                # Add the child to the yet_to_visit list
+                self.add_node_to_yet_to_visit(child)
+        return return_path(self.current_node, self.maze)
+
+if __name__ == "__main__":
+    _ = CellStatus.EMPTY
+    c = CellStatus.EMPTY # current node
+    o = CellStatus.OBS
+    b = CellStatus.BOUNDARY
+    maze = np.array([[_, _, _, _, _, _, _, _, _, _],
+                     [_, _, _, _, _, _, _, _, _, _],
+                     [_, _, _, _, _, _, b, b, b, _],
+                     [_, _, _, _, _, _, b, o, b, _],
+                     [_, _, _, _, _, _, b, b, b, _],
+                     [_, _, _, _, _, _, _, _, _, _],
+                     [_, c, _, _, _, _, _, _, _, _],
+                     [_, _, _, _, _, _, _, _, _, _],
+                     [_, _, _, _, _, _, _, _, _, _],
+                     [_, _, _, _, _, _, _, _, _, _],])
+    cost = 10
+    start = [1, 1, constants.NORTH]
+    end = [3, 7, constants.SOUTH]
+    auto_planner = AutoPlanner()
+    auto_planner.set_maze(maze)
+    auto_planner.current_node = ImprovedNode(None, [6, 1, constants.EAST])
+    auto_planner.get_children_of_current_node()
+    for node in auto_planner.children_current_node:
+        print(f"Child: (x, y, dir) = ({node.pose.x}, {node.pose.y}, {node.pose.direction})")

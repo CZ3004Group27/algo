@@ -16,3 +16,6 @@ class Pose(object):
         self.x = target[0]
         self.y = target[1]
         self.direction = target[2]
+
+    def __eq__(self, other):
+        return self.x == other.x and self.y == other.y and self.direction == other.direction
