@@ -100,22 +100,8 @@ class Grid(object):
         for target in fastest_path[1:]:
             target_x = target[0]
             target_y = target[1]
-            target_direction = target[2]
-            obstacle_cell = target[3]
 
-            # Get the 2 other neighbour potential target cells
-            if target_direction == constants.NORTH:
-                neighbour_left = (target_x - 1, target_y, target_direction, obstacle_cell)
-                neighbour_right = (target_x + 1, target_y, target_direction, obstacle_cell)
-            elif target_direction == constants.SOUTH:
-                neighbour_left = (target_x + 1, target_y, target_direction, obstacle_cell)
-                neighbour_right = (target_x - 1, target_y, target_direction, obstacle_cell)
-            elif target_direction == constants.EAST:
-                neighbour_left = (target_x, target_y + 1, target_direction, obstacle_cell)
-                neighbour_right = (target_x, target_y - 1, target_direction, obstacle_cell)
-            elif target_direction == constants.WEST:
-                neighbour_left = (target_x, target_y - 1, target_direction, obstacle_cell)
-                neighbour_right = (target_x, target_y + 1, target_direction, obstacle_cell)
+            neighbour_left, neighbour_right = self.get_potential_target_cells(target)
 
             # Calculate manhattan dists
             left_dist = abs(previous_target[0] - neighbour_left[0]) + abs(previous_target[1] - neighbour_left[1])
@@ -138,6 +124,27 @@ class Grid(object):
             previous_target = new_optimized_target
             i += 1
         return optimized_fastest_path
+
+    def get_potential_target_cells(self, target):
+        target_x = target[0]
+        target_y = target[1]
+        target_direction = target[2]
+        obstacle_cell = target[3]
+
+        # Get the 2 other neighbour potential target cells
+        if target_direction == constants.NORTH:
+            neighbour_left = (target_x - 1, target_y, target_direction, obstacle_cell)
+            neighbour_right = (target_x + 1, target_y, target_direction, obstacle_cell)
+        elif target_direction == constants.SOUTH:
+            neighbour_left = (target_x + 1, target_y, target_direction, obstacle_cell)
+            neighbour_right = (target_x - 1, target_y, target_direction, obstacle_cell)
+        elif target_direction == constants.EAST:
+            neighbour_left = (target_x, target_y + 1, target_direction, obstacle_cell)
+            neighbour_right = (target_x, target_y - 1, target_direction, obstacle_cell)
+        elif target_direction == constants.WEST:
+            neighbour_left = (target_x, target_y - 1, target_direction, obstacle_cell)
+            neighbour_right = (target_x, target_y + 1, target_direction, obstacle_cell)
+        return neighbour_left, neighbour_right
 
     def create_obstacle(self, arglist):
         grid_x, grid_y, dir = arglist[0], arglist[1], arglist[2]

@@ -408,10 +408,11 @@ class AutoPlanner():
         # From here we will find the lowest cost node to expand next
         self.yet_to_visit = PriorityQueue()
 
-    def initialize_visited_list(self):
-        # in this list we will put all node those already explored so that we
+    def initialize_visited_nodes(self):
+        # we will put all node those already explored so that we
         # don't explore it again
-        self.visited_list = []
+        # dictionary (x, y, dir) map
+        self.visited_list = set()
 
     def add_node_to_yet_to_visit(self, node: ImprovedNode):
         self.yet_to_visit.put((node.f, time.time(), node))
@@ -452,10 +453,13 @@ class AutoPlanner():
 
 
     def is_goal_reached(self) -> bool:
-        return self.current_node.pose == self.end_node.pose
+        for potential_goal_node in self.potential_goal_nodes:
+            if self.current_node.pose == potential_goal_node.pose:
+                return True
+        return False
 
     def add_node_to_visited(self, node: ImprovedNode):
-        self.visited_list.append(node)
+        self.visited_list.add(node.pose.to_tuple())
 
     def is_robot_within_boundary_at_node(self, node: ImprovedNode):
         """Check if the robot will be within boundary if staying in this
@@ -513,7 +517,7 @@ class AutoPlanner():
 
 
     def is_node_already_visited(self, node: ImprovedNode):
-        return len([visited_child for visited_child in self.visited_list if visited_child.pose == node.pose]) > 0
+        return node.pose.to_tuple() in self.visited_list
 
     def heuristics(self, node: ImprovedNode):
         """Return estimated cost to go to the end node"""
@@ -545,15 +549,49 @@ class AutoPlanner():
     def is_turning_move(self, move: RobotMovement):
         return move in self.turning_moves
 
+    def set_neighbours_as_potential_goal_nodes(self):
+        """Set the neighbouring nodes of the end nodes as potential targets"""
+        target_x = self.end_node.pose.x
+        target_y = self.end_node.pose.y
+        target_direction = self.end_node.pose.direction
+
+        # Get the coordinates of other neighbour potential target cells
+        if target_direction == constants.NORTH:
+            neighbour_coords = [(target_x - 1, target_y),
+                                (target_x + 1, target_y)]
+        elif target_direction == constants.SOUTH:
+            neighbour_coords = [(target_x + 1, target_y),
+                                (target_x - 1, target_y)]
+        elif target_direction == constants.EAST:
+            neighbour_coords = [(target_x, target_y + 1),
+                                (target_x, target_y - 1)]
+        elif target_direction == constants.WEST:
+            neighbour_coords = [(target_x, target_y - 1),
+                                (target_x, target_y + 1)]
+
+        for neighbour_x, neighbour_y in neighbour_coords:
+            neighbour_node = ImprovedNode(None, [neighbour_x, neighbour_y, target_direction])
+            if self.is_robot_within_boundary_at_node(neighbour_node) and not self.is_in_collision(neighbour_node):
+                self.add_potential_goal_node(neighbour_node)
+
+    def reset_potential_goal_nodes(self):
+        self.potential_goal_nodes = list()
+
+    def add_potential_goal_node(self, node: ImprovedNode):
+        self.potential_goal_nodes.append(node)
+
     def search_path(self, maze, cost, start, end):
         self.set_maze(maze)
         self.set_straight_cost(cost)
         # Create start and end node with initialized values for g, h and f
         self.start_node = self.initialize_node(start)
         self.end_node = self.initialize_node(end)
+        self.reset_potential_goal_nodes()
+        self.add_potential_goal_node(self.end_node)
+        self.set_neighbours_as_potential_goal_nodes()
 
         self.initialize_yet_to_visit()
-        self.initialize_visited_list()
+        self.initialize_visited_nodes()
 
         self.add_node_to_yet_to_visit(self.start_node)
 
