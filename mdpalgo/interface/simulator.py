@@ -277,13 +277,16 @@ class Simulator:
             self.comms.send(image_result_string)
             self.path_planner.send_to_rpi()
 
-    def check_infer_result(self, infer_result: list):
+    def check_infer_result(self, infer_result):
+        if infer_result == "Nothing detected":
+            raise Exception("Nothing detected")
+
         # remove all elements in infer_result that are "Bullseye"
         result = [elem for elem in infer_result if elem != "Bullseye"]
 
         # if all elements in list are "Bullseye", raise exception
         if len(result) == 0:
-            raise Exception("No image result")
+            raise Exception("Only Bullseye")
         # get first element that is not "Bullseye"
         else:
             return result[0]
