@@ -1536,20 +1536,21 @@ class PathPlan(object):
             self.do_move(move)
 
         self.IS_ON_PATH = False
-        # Last step is to rotate on the spot
-        print("LAST STEP")
-        self.plan_trip_by_robot_target_directions(self.target_pose.x, self.target_pose.y, self.robot.grid_x,
-                                                    self.robot.grid_y,
-                                                    self.robot.angle, self.target_pose.direction)
+
+    def convert_to_display_coords(self, x, y) -> tuple:
+        """Convert from robot coorystem dinate system (origin at bottom left)
+        to the display coordinate system (origin upper left)"""
+        return 19 - y, x
 
     def draw_path_based_on_movements(self, movements):
-        current_cell_x, current_cell_y, current_direction = self.get_robot_pos()
+        robot_x, robot_y, robot_dir = self.get_robot_pos()
+        current_cell_x, current_cell_y = self.convert_to_display_coords(robot_x, robot_y)
+        current_direction = robot_dir
 
         previous_cell_x, previous_cell_y, previous_direction = current_cell_x, current_cell_y, current_direction
 
         # set path status for initial cell
         self.grid.cells[previous_cell_x][previous_cell_y].set_path_status()
-
         for movement in movements:
             if movement == "F":
                 if current_direction == constants.NORTH:
@@ -1568,6 +1569,8 @@ class PathPlan(object):
                     current_cell_x = previous_cell_x
                     current_cell_y = previous_cell_y + 1
 
+                self.grid.cells[current_cell_x][current_cell_y].set_path_status()
+
             elif movement == "B":
                 if current_direction == constants.NORTH:
                     current_cell_x = previous_cell_x + 1
@@ -1584,6 +1587,8 @@ class PathPlan(object):
                 elif current_direction == constants.EAST:
                     current_cell_x = previous_cell_x
                     current_cell_y = previous_cell_y - 1
+
+                self.grid.cells[current_cell_x][current_cell_y].set_path_status()
 
             elif movement == "FL":
                 if current_direction == constants.NORTH:
@@ -1764,10 +1769,6 @@ class PathPlan(object):
 
                     for i in range(1, 4):
                         self.grid.cells[previous_cell_x][previous_cell_y-i].set_path_status()
-
-            # set path status for current cell in "F" or "B"
-            if current_cell_x == previous_cell_x or current_cell_y == previous_cell_y:
-                self.grid.cells[current_cell_x][current_cell_y].set_path_status()
 
             # set previous x, y and direction as current x, y and direction
             previous_cell_x, previous_cell_y, previous_direction = current_cell_x, current_cell_y, current_direction
