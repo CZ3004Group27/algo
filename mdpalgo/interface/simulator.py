@@ -246,8 +246,8 @@ class Simulator:
             # if no image result for 2 times, return early to prevent request photo loop
             if self.no_image_result_count == 2:
                 self.no_image_result_count = 0
-                self.path_planner.skip_current_target()
-                self.path_planner.send_to_rpi()
+                self.path_planner.skip_current_image()
+                self.callback_queue.put(self.path_planner.send_to_rpi)
                 return
 
             self.path_planner.request_photo_from_rpi() # take photo again if exception raised
@@ -274,8 +274,8 @@ class Simulator:
         image_result_string = self.path_planner.get_image_result_string(target_id)
         if constants.RPI_CONNECTED:
             # send image result string to rpi
-            self.comms.send(image_result_string)
-            self.path_planner.send_to_rpi()
+            self.callback_queue.put(lambda: self.comms.send(image_result_string))
+            self.callback_queue.put(self.path_planner.send_to_rpi)
 
     def check_infer_result(self, infer_result):
         if infer_result == "Nothing detected":
