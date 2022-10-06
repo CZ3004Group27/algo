@@ -1441,9 +1441,13 @@ class PathPlan(object):
 
     def send_to_rpi(self):
         if not self.obstacle_list_rpi:
-            # Call predict function on finish
-            self.simulator.predict_on_finish()
-            self.send_to_rpi_finish_task()
+            if not self.skipped_obstacles:
+                # Call predict function on finish
+                self.simulator.predict_on_finish()
+                self.send_to_rpi_finish_task()
+            else:
+                print("Move to skipped obstacle to take more images")
+                self.restart_robot()
             return
 
         self.obstacle_key = self.obstacle_list_rpi.pop(0)
