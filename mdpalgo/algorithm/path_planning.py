@@ -42,63 +42,61 @@ class PathPlan(object):
 
         while len(self.fastest_route) != 0:
             count_of_obs += 1
-            if count_of_obs == 2:
+            target = self.fastest_route.pop(0)
+            self.plan_full_path_to(target)
+
+            if count_of_obs == 1:
                 if constants.RPI_CONNECTED:
                     self.send_to_rpi()
 
-            target = self.fastest_route.pop(0)
-            print("Current Target: ", target)
-
-            self.target_pose.set_pose(target[:3])
-            self.obstacle_cell = target[3]
-
-            self.robot_pose = self.robot.get_robot_pose()
-
-            # if no obstacle exceptions, can use hardcoded shortest path
-            if self.check_movement_possible(self.target_pose.x, self.target_pose.y, self.robot_pose.x, self.robot_pose.y,
-                                            self.robot_pose.direction, self.target_pose.direction):
-                # Target Coordinates: (a, b); Robot Coordinates: (x, y)
-                self.plan_trip_by_robot_target_directions(self.target_pose.x, self.target_pose.y, self.robot_pose.x, self.robot_pose.y,
-                                                          self.robot_pose.direction, self.target_pose.direction)
-
-            # else, plan a path using astar search on virtual grid
-            else:
-                # x-coord = column; y-coord = 19-row
-                start = [19 - self.robot.grid_y, self.robot.grid_x, self.robot.angle]
-                end = [19 - self.target_pose.y,
-                       self.target_pose.x,
-                       self.target_pose.direction]  # ending position
-                cost = 10  # cost per movement
-                maze = self.grid.cells_virtual
-                search_result = search(maze, cost, start, end)
-
-                if search_result is None:
-                    # Skip this obstacle first
-                    print("Search result: ", search_result, " ; Skipping obstacle...")
-                    self.skip_current_target()
-                else:
-                    # Execute gray route
-                    draw_path, path = search_result[0], search_result[1]
-
-                    for r in range(20):
-                        for c in range(20):
-                            if draw_path[r][c] >= 5:
-                                self.grid.cells[r][c].set_path_status(draw_path[r][c])
-                    # Colour rough route gray
-                    self.robot.redraw_car()
-
-                    movements = self.translate_path_to_movements(path)
-                    self.IS_ON_PATH = True
-                    for move in movements:
-                        self.do_move(move)
-                    self.IS_ON_PATH = False
-
-                    # Last step is to rotate on the spot
-                    print("LAST STEP")
-                    self.plan_trip_by_robot_target_directions(self.target_pose.x, self.target_pose.y, self.robot.grid_x,
-                                                              self.robot.grid_y,
-                                                              self.robot.angle, self.target_pose.direction)
         self.restart_robot()
+
+    def plan_full_path_to(self, target):
+        """target is a list [x, y, dir, Cell] where Cell is the obstacle cell
+        and (x, y, dir) is the target pose for the car to view the image tag
+        """
+        print("Current Target: ", target)
+
+        self.get_target_pose_obstacle_cell_from(target)
+        self.robot_pose = self.robot.get_robot_pose()
+
+        # if no obstacle exceptions, can use hardcoded shortest path
+        if self.check_movement_possible(self.target_pose.x, self.target_pose.y, self.robot_pose.x, self.robot_pose.y,
+                                        self.robot_pose.direction, self.target_pose.direction):
+            # Target Coordinates: (a, b); Robot Coordinates: (x, y)
+            self.plan_trip_by_robot_target_directions(self.target_pose.x, self.target_pose.y, self.robot_pose.x, self.robot_pose.y,
+                                                        self.robot_pose.direction, self.target_pose.direction)
+            return
+
+        # else, plan a path using astar search on virtual grid
+        search_result = self.auto_search()
+        if search_result is None:
+            # Skip this obstacle first
+            print("Search result: ", search_result, " ; Skipping obstacle...")
+            self.skip_current_target()
+            return
+
+        # Else, execute gray route
+        self.execute_auto_search_result(search_result)
+
+    def get_target_pose_obstacle_cell_from(self, target: list):
+        """Get the target pose and obstacle cell from a list of [x, y, dir, Cell]
+        """
+        self.target_pose.set_pose(target[:3])
+        self.obstacle_cell = target[3]
+
+    def auto_search(self):
+        """Do an astar search rather than hardcoding"""
+        # x-coord = column; y-coord = 19-row
+        start = [19 - self.robot.grid_y, self.robot.grid_x, self.robot.angle]
+        end = [19 - self.target_pose.y,
+                self.target_pose.x,
+                self.target_pose.direction]  # ending position
+        cost = 10  # cost per movement
+        maze = self.grid.cells_virtual
+        search_result = search(maze, cost, start, end)
+
+        return search_result
 
     def skip_current_target(self):
         self.skipped_obstacles.append(self.target_pose)
@@ -109,60 +107,8 @@ class PathPlan(object):
             return
 
         while len(self.skipped_obstacles) != 0:
-
             target = self.skipped_obstacles.pop(0)
-            print("Current Target: ", target)
-
-            self.target_pose.set_pose(target[:3])
-            self.obstacle_cell = target[3]
-
-            self.robot_pose = self.robot.get_robot_pose()
-
-            # if no obstacle exceptions, can use hardcoded shortest path
-            if self.check_movement_possible(self.target_pose.x, self.target_pose.y, self.robot_pose.x, self.robot_pose.y,
-                                            self.robot_pose.direction, self.target_pose.direction):
-                # Target Coordinates: (a, b); Robot Coordinates: (x, y)
-                self.plan_trip_by_robot_target_directions(self.target_pose.x, self.target_pose.y, self.robot_pose.x, self.robot_pose.y,
-                                                          self.robot_pose.direction, self.target_pose.direction)
-
-            # else, plan a path using astar search on virtual grid
-            else:
-                # x-coord = column; y-coord = 19-row
-                start = [19 - self.robot.grid_y, self.robot.grid_x, self.robot.angle]
-                end = [19 - self.target_pose.y,
-                       self.target_pose.x,
-                       self.target_pose.direction]  # ending position
-                cost = 10  # cost per movement
-                maze = self.grid.cells_virtual
-                search_result = search(maze, cost, start, end)
-
-                if search_result is None:
-                    # Force run hardcoded path
-                    print("Search result: ", search_result, " ; FORCING hardcoded path...")
-                    self.plan_trip_by_robot_target_directions(self.target_pose.x, self.target_pose.y, self.robot_pose.x, self.robot_pose.y,
-                                                              self.robot_pose.direction, self.target_pose.direction)
-                else:
-                    # Execute gray route
-                    draw_path, path = search_result[0], search_result[1]
-
-                    for r in range(20):
-                        for c in range(20):
-                            if draw_path[r][c] >= 5:
-                                self.grid.cells[r][c].set_path_status(draw_path[r][c])
-                    # Colour rough route gray
-                    self.robot.redraw_car()
-
-                    movements = self.translate_path_to_movements(path)
-                    self.IS_ON_PATH = True
-                    for move in movements:
-                        self.do_move(move)
-                    self.IS_ON_PATH = False
-
-                    # Last step is to rotate on the spot
-                    print("LAST STEP")
-                    self.plan_trip_by_robot_target_directions(self.target_pose.x, self.target_pose.y, self.robot.grid_x,
-                                                              self.robot.grid_y,
-                                                              self.robot.angle, self.target_pose.direction)
+            self.plan_full_path_to(target)
 
     def do_move(self, move):
         if move == "F":
@@ -1351,10 +1297,7 @@ class PathPlan(object):
     def check_reached_target(self, target_a, target_b):
         x, y = self.robot.get_grid_pos()[0], self.robot.get_grid_pos()[1]
         if target_a == x and target_b == y:
-            print(self.get_movements_string())
-            print(self.get_current_obstacle_id())
-            print(self.get_robot_pos_string())
-            print(self.get_take_photo_string())
+            self.print_info()
 
             # Add into dictionary
             self.all_movements_dict[self.get_current_obstacle_id()] = self.get_movements_string()
@@ -1376,7 +1319,7 @@ class PathPlan(object):
                     continue
 
                 # Set cell status as 5 for cell in position
-                self.grid.cells[row][col].set_path_status(5)
+                self.grid.cells[row][col].set_path_status()
 
                 # Set cell status as 5 for cells which are part of turns
                 if previous_row != row and previous_col != col and i < len(self.collection_of_movements):
@@ -1384,94 +1327,94 @@ class PathPlan(object):
                     if previous_row > row and (self.collection_of_movements[i] == "FR"):
                         if robot_dir != 0:
                             for row_idx in range(row, previous_row):
-                                self.grid.cells[row_idx][previous_col].set_path_status(5)
+                                self.grid.cells[row_idx][previous_col].set_path_status()
 
                             # previous col < current col
                             if previous_col < col:
                                 for col_idx in range(previous_col, col):
-                                    self.grid.cells[row][col_idx].set_path_status(5)
+                                    self.grid.cells[row][col_idx].set_path_status()
 
                         else:
                             for row_idx in range(row, previous_row):
-                                self.grid.cells[row_idx][col].set_path_status(5)
+                                self.grid.cells[row_idx][col].set_path_status()
 
                             # previous col < current col
                             if previous_col < col:
                                 for col_idx in range(previous_col, col):
-                                    self.grid.cells[row][col_idx].set_path_status(5)
+                                    self.grid.cells[row][col_idx].set_path_status()
 
                     # previous row > current row and movement == "FL"
                     elif previous_row > row and (self.collection_of_movements[i] == "FL"):
                         if robot_dir == 0:
                             for row_idx in range(row, previous_row):
-                                self.grid.cells[row_idx][col].set_path_status(5)
+                                self.grid.cells[row_idx][col].set_path_status()
 
                             # previous col < current col
                             if previous_col < col:
                                 for col_idx in range(previous_col, col):
-                                    self.grid.cells[previous_row][col_idx].set_path_status(5)
+                                    self.grid.cells[previous_row][col_idx].set_path_status()
 
                         if robot_dir == 90:
                             for row_idx in range(row, previous_row):
-                                self.grid.cells[row_idx][previous_col].set_path_status(5)
+                                self.grid.cells[row_idx][previous_col].set_path_status()
 
                             # previous col > current col
                             if previous_col > col:
                                 for col_idx in range(col, previous_col):
-                                    self.grid.cells[row][col_idx].set_path_status(5)
+                                    self.grid.cells[row][col_idx].set_path_status()
 
                     # previous row < current row and movement == "FR"
                     elif previous_row < row and (self.collection_of_movements[i] == "FR"):
                         if robot_dir == 180:
                             for row_idx in range(previous_row, row):
-                                self.grid.cells[row_idx][col].set_path_status(5)
+                                self.grid.cells[row_idx][col].set_path_status()
 
                             # previous col < current col
                             if previous_col < col:
                                 for col_idx in range(previous_col, col):
-                                    self.grid.cells[previous_row][col_idx].set_path_status(5)
+                                    self.grid.cells[previous_row][col_idx].set_path_status()
 
                         elif robot_dir == 90:
                             for row_idx in range(previous_row, row):
-                                self.grid.cells[row_idx][previous_col].set_path_status(5)
+                                self.grid.cells[row_idx][previous_col].set_path_status()
 
                             # previous col > current col
                             if previous_col > col:
                                 for col_idx in range(col, previous_col):
-                                    self.grid.cells[row][col_idx].set_path_status(5)
+                                    self.grid.cells[row][col_idx].set_path_status()
 
                     # previous row < current row and movement == "FL"
                     elif previous_row < row and (self.collection_of_movements[i] == "FL"):
                         if robot_dir == -90:
                             for row_idx in range(previous_row, row):
-                                self.grid.cells[row_idx][previous_col].set_path_status(5)
+                                self.grid.cells[row_idx][previous_col].set_path_status()
 
                             # previous col < current col
                             if previous_col < col:
                                 for col_idx in range(previous_col, col):
-                                    self.grid.cells[row][col_idx].set_path_status(5)
+                                    self.grid.cells[row][col_idx].set_path_status()
 
                     # previous row < current row and movement == "BL"
                     elif previous_row < row and (self.collection_of_movements[i] == "BL"):
                         if robot_dir == 0:
                             for row_idx in range(previous_row, row):
-                                self.grid.cells[row_idx][col].set_path_status(5)
+                                self.grid.cells[row_idx][col].set_path_status()
 
                             # previous col < current col
                             if previous_col < col:
                                 for col_idx in range(previous_col, col):
-                                    self.grid.cells[previous_row][col_idx].set_path_status(5)
+                                    self.grid.cells[previous_row][col_idx].set_path_status()
 
                     # previous row > current row and movement == "BR"
                     elif previous_row > row and (self.collection_of_movements[i] == "BR"):
                         if robot_dir == 180:
                             for row_idx in range(row, previous_row):
-                                self.grid.cells[row_idx][col].set_path_status(5)
+                                self.grid.cells[row_idx][col].set_path_status()
 
                             # previous col < current col
                             if previous_col < col:
                                 for col_idx in range(previous_col, col):
-                                    self.grid.cells[previous_row][col_idx].set_path_status(5)
+                                    self.grid.cells[previous_row][col_idx].set_path_status()
 
                 # Colour rough route gray
                 self.robot.redraw_car()
@@ -1485,24 +1428,41 @@ class PathPlan(object):
             #self.move_backward_by(2)
 
             return True
+        self.print_info()
+        return False
+
+    def print_info(self):
         print(self.get_movements_string())
         print(self.get_current_obstacle_id())
         print(self.get_robot_pos_string())
         print(self.get_take_photo_string())
-        return False
 
     def send_to_rpi(self):
-        if self.obstacle_list_rpi:
-            self.obstacle_key = self.obstacle_list_rpi.pop(0)
-            self.reset_num_move_completed_rpi()
-            self.total_num_move_required_rpi = len(self.all_movements_dict[self.obstacle_key].split("/")[-1].split(","))
-            print("Remaining obstacles: ", self.obstacle_list_rpi)
-            self.simulator.comms.send(self.all_robot_pos_dict[self.obstacle_key])
-            self.simulator.comms.send(self.all_movements_dict[self.obstacle_key])
-        else:
+        if not self.obstacle_list_rpi:
             # Call predict function on finish
             self.simulator.predict_on_finish()
-            self.simulator.comms.send("FINISH/EXPLORE/")
+            self.send_to_rpi_finish_task()
+            return
+
+        self.obstacle_key = self.obstacle_list_rpi.pop(0)
+        self.reset_num_move_completed_rpi()
+        self.set_total_num_move_from_movement_message(self.all_movements_dict[self.obstacle_key])
+        print("Remaining obstacles: ", self.obstacle_list_rpi)
+        self.simulator.comms.send(self.all_robot_pos_dict[self.obstacle_key])
+        self.simulator.comms.send(self.all_movements_dict[self.obstacle_key])
+
+    def set_total_num_move_from_movement_message(self, message: str):
+        """Extract the number of moves from the movement message
+
+        Examples:
+            >>> message = "MOVEMENTS/3-14/F,F,F,F,F,F,F,FR,F,BR,F,F"
+            >>> get_num_move_from_movement_message(message)
+            12
+        """
+        self.total_num_move_required_rpi = len(message.split("/")[-1].split(","))
+
+    def send_to_rpi_finish_task(self):
+        self.simulator.comms.send("FINISH/EXPLORE/")
 
     def reset_num_move_completed_rpi(self):
         self.num_move_completed_rpi = 0
@@ -1526,96 +1486,55 @@ class PathPlan(object):
         self.reset_robot_pos_list()
         # self.move_backward_by(2)
 
-        if self.obstacle_list_rpi:
-            self.obstacle_key = self.obstacle_list_rpi.pop(0)
-            print("Remaining obstacles: ", self.obstacle_list_rpi)
-            # Set robot position
-            self.robot.grid_x = robot_x
-            self.robot.grid_y = robot_y
-            self.robot.angle = robot_dir
-            self.robot.redraw_car()
-            # Set target position
-            i = 0 - len(self.obstacle_list_rpi) - 1
-            target = self.robot.optimized_target_locations[i:][0]
+        if not self.obstacle_list_rpi:
+            self.send_to_rpi_finish_task()
+            return
 
-            # Replan path for this particular obstacle with new robot position
-            self.target_pose.set_pose(target[:3])
-            self.obstacle_cell = target[3]
+        self.obstacle_key = self.obstacle_list_rpi.pop(0)
+        print("Remaining obstacles: ", self.obstacle_list_rpi)
+        # Set robot position
+        self.robot.grid_x = robot_x
+        self.robot.grid_y = robot_y
+        self.robot.angle = robot_dir
+        self.robot.redraw_car()
+        # Set target position
+        i = 0 - len(self.obstacle_list_rpi) - 1
+        target = self.robot.optimized_target_locations[i:][0]
 
-            self.robot_pose = self.robot.get_robot_pose()
+        self.plan_full_path_to(target)
 
-            # if no obstacle exceptions, can use hardcoded shortest path
-            if self.check_movement_possible(self.target_pose.x, self.target_pose.y, self.robot_pose.x, self.robot_pose.y,
-                                            self.robot_pose.direction, self.target_pose.direction):
-                # Target Coordinates: (a, b); Robot Coordinates: (x, y)
-                self.plan_trip_by_robot_target_directions(self.target_pose.x, self.target_pose.y, self.robot_pose.x, self.robot_pose.y,
-                                                          self.robot_pose.direction, self.target_pose.direction)
+        # Change all movements dict and all robot pos dict for obstacle key replanned
+        self.all_movements_dict[self.obstacle_key] = self.get_movements_string()
+        self.all_robot_pos_dict[self.obstacle_key] = self.get_robot_pos_string()
+        self.all_take_photo_dict[self.obstacle_key] = self.get_take_photo_string()
+        # Reset
+        self.IS_ON_PATH = False
+        self.reset_collection_of_movements()
+        self.reset_robot_pos_list()
 
-            # else, plan a path using astar search on virtual grid
-            else:
-                # x-coord = column; y-coord = 19-row
-                start = [19 - self.robot.grid_y, self.robot.grid_x, self.robot.angle]
-                end = [19 - self.target_pose.y,
-                       self.target_pose.x,
-                       self.target_pose.direction]  # ending position
-                cost = 10  # cost per movement
-                maze = self.grid.cells_virtual
-                search_result = search(maze, cost, start, end)
+        self.send_to_rpi()
 
-                if search_result is None:
-                    # Force run hardcoded path
-                    print("Search result: ", search_result, " ; FORCING hardcoded path...")
-                    self.plan_trip_by_robot_target_directions(self.target_pose.x, self.target_pose.y, self.robot_pose.x, self.robot_pose.y,
-                                                              self.robot_pose.direction, self.target_pose.direction)
-                else:
-                    # Execute gray route
-                    draw_path, path = search_result[0], search_result[1]
+    def execute_auto_search_result(self, search_result: tuple):
+        # Execute gray route
+        draw_path, path = search_result[0], search_result[1]
 
+        for r in range(20):
+            for c in range(20):
+                if draw_path[r][c] >= 5:
+                    self.grid.cells[r][c].set_path_status()
+        # Colour rough route gray
+        self.robot.redraw_car()
 
-                    self.IS_ON_PATH = True
-                    for r in range(20):
-                        for c in range(20):
-                            if draw_path[r][c] >= 5:
-                                self.grid.cells[r][c].set_path_status(draw_path[r][c])
-                    # Colour rough route gray
-                    self.robot.redraw_car()
+        movements = self.translate_path_to_movements(path)
+        for move in movements:
+            self.do_move(move)
 
-                    self.IS_ON_PATH = True
-                    movements = self.translate_path_to_movements(path)
-                    for move in movements:
-                        self.do_move(move)
-
-                    self.IS_ON_PATH = True
-                    # Last step is to rotate on the spot
-                    print("LAST STEP")
-                    self.plan_trip_by_robot_target_directions(self.target_pose.x, self.target_pose.y, self.robot.grid_x,
-                                                              self.robot.grid_y,
-                                                              self.robot.angle, self.target_pose.direction)
-
-            x, y = self.robot.get_grid_pos()[0], self.robot.get_grid_pos()[1]
-            if self.target_pose.x == x and self.target_pose.y == y:
-                print(self.get_movements_string())
-                print(self.get_current_obstacle_id())
-                print(self.get_robot_pos_string())
-                print(self.get_take_photo_string())
-                print("test")
-
-            # Change all movements dict and all robot pos dict for obstacle key replanned
-            self.all_movements_dict[self.obstacle_key] = self.get_movements_string()
-            self.all_robot_pos_dict[self.obstacle_key] = self.get_robot_pos_string()
-            self.all_take_photo_dict[self.obstacle_key] = self.get_take_photo_string()
-            # Reset
-            self.IS_ON_PATH = False
-            self.reset_collection_of_movements()
-            self.reset_robot_pos_list()
-
-            self.reset_num_move_completed_rpi()
-            self.total_num_move_required_rpi = len(self.all_movements_dict[self.obstacle_key].split("/")[-1].split(","))
-            self.simulator.comms.send(self.all_robot_pos_dict[self.obstacle_key])
-            self.simulator.comms.send(self.all_movements_dict[self.obstacle_key])
-            self.simulator.comms.send(self.all_take_photo_dict[self.obstacle_key])
-        else:
-            self.simulator.comms.send("No more movements.")
+        self.IS_ON_PATH = False
+        # Last step is to rotate on the spot
+        print("LAST STEP")
+        self.plan_trip_by_robot_target_directions(self.target_pose.x, self.target_pose.y, self.robot.grid_x,
+                                                    self.robot.grid_y,
+                                                    self.robot.angle, self.target_pose.direction)
 
     def check_movement_possible(self, a, b, x, y, robot_direction, target_direction):
         constants.IS_CHECKING = True

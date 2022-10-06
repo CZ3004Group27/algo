@@ -53,7 +53,7 @@ class Cell:
     def set_obstacle_visited_status(self):
         self.status = CellStatus.VISITED_OBS
 
-    def set_path_status(self, num):
+    def set_path_status(self):
         self.status = CellStatus.PATH
 
     def get_obstacle(self):
