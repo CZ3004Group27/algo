@@ -1768,6 +1768,9 @@ class PathPlan(object):
             if current_cell_x == previous_cell_x or current_cell_y == previous_cell_y:
                 self.grid.cells[current_cell_x][current_cell_y].set_path_status()
 
+            # set previous x, y and direction as current x, y and direction
+            previous_cell_x, previous_cell_y, previous_direction = current_cell_x, current_cell_y, current_direction
+
         # Colour rough route gray
         self.robot.redraw_car()
 
