@@ -5,6 +5,7 @@ from mdpalgo import constants
 from mdpalgo.map.cell import Cell, CellStatus
 from mdpalgo.map.configuration import Pose
 from enum import Enum
+import time
 
 class RobotMovement(Enum):
     FORWARD = "F"
@@ -326,30 +327,38 @@ class ImprovedNode:
     def __init__(self, parent=None, pose:list=None):
         self.parent = parent
         self.pose = Pose(pose)
+        self.move_from_parent: RobotMovement = None
 
         self.g = 0
         self.h = 0
         self.f = 0
 
-
 class AutoPlanner():
     def __init__(self):
         # map movement to a relative vector wrt the current direction
-        self.map_move_to_relative_displacement =  {RobotMovement.FORWARD: [0, 1],
-                                RobotMovement.BACKWARD: [0, -1],
-                                RobotMovement.FORWARD_RIGHT: [3, 3],
-                                RobotMovement.FORWARD_LEFT: [-3, 3],
-                                RobotMovement.BACKWARD_RIGHT: [3, -3],
-                                RobotMovement.BACKWARD_LEFT: [-3, -3],
-                                }
+        self.map_move_to_relative_displacement =  {
+            RobotMovement.FORWARD: [0, 1],
+            RobotMovement.BACKWARD: [0, -1],
+            RobotMovement.FORWARD_RIGHT: [3, 3],
+            RobotMovement.FORWARD_LEFT: [-3, 3],
+            RobotMovement.BACKWARD_RIGHT: [3, -3],
+            RobotMovement.BACKWARD_LEFT: [-3, -3],
+        }
         self.map_move_to_relative_direction = {
-                                RobotMovement.FORWARD: constants.NORTH,
-                                RobotMovement.BACKWARD: constants.NORTH,
-                                RobotMovement.FORWARD_RIGHT: constants.EAST,
-                                RobotMovement.FORWARD_LEFT: constants.WEST,
-                                RobotMovement.BACKWARD_RIGHT: constants.WEST,
-                                RobotMovement.BACKWARD_LEFT: constants.EAST,
-                                }
+            RobotMovement.FORWARD: constants.NORTH,
+            RobotMovement.BACKWARD: constants.NORTH,
+            RobotMovement.FORWARD_RIGHT: constants.EAST,
+            RobotMovement.FORWARD_LEFT: constants.WEST,
+            RobotMovement.BACKWARD_RIGHT: constants.WEST,
+            RobotMovement.BACKWARD_LEFT: constants.EAST,
+        }
+        self.turning_moves = {
+            RobotMovement.FORWARD_RIGHT,
+            RobotMovement.FORWARD_LEFT,
+            RobotMovement.BACKWARD_RIGHT,
+            RobotMovement.BACKWARD_LEFT,
+        }
+
         self.collision_statuses = [CellStatus.BOUNDARY, CellStatus.OBS, CellStatus.VISITED_OBS]
 
         # change the current direction to rotation matrix
@@ -364,9 +373,14 @@ class AutoPlanner():
                                       [1, 1]]),
         }
 
-    def initialize_node(self, node_position: list) -> Node:
+        # turning cost = straight cost * turning factor
+        self.turning_factor = 5 # assume perfect circle, about 4.71
+
+        self.node_index_in_yet_to_visit = 2
+
+    def initialize_node(self, node_position: list) -> ImprovedNode:
         """f, h, g are all initialized to 0"""
-        return Node(None, tuple(node_position))
+        return ImprovedNode(None, tuple(node_position))
 
     def initialize_counters(self):
         """Initialize the counters used to halt the algorithm"""
@@ -392,11 +406,11 @@ class AutoPlanner():
         self.visited_list = []
 
     def add_node_to_yet_to_visit(self, node: ImprovedNode):
-        self.yet_to_visit.put((node.f, node))
+        self.yet_to_visit.put((node.f, time.time(), node))
 
     def get_node_from_yet_to_visit(self) -> ImprovedNode:
         """Remove and return the node with lowest f from queue"""
-        return self.yet_to_visit.get()[1]
+        return self.yet_to_visit.get()[self.node_index_in_yet_to_visit]
 
     def is_yet_to_visit_empty(self):
         return self.yet_to_visit.empty()
@@ -454,7 +468,9 @@ class AutoPlanner():
             self.current_node.pose.x + displacement_from_current_node[0],
             self.current_node.pose.y + displacement_from_current_node[1],
             self.get_absolute_direction(relative_direction_from_current_node, self.current_node.pose.direction)]
-        return ImprovedNode(self.current_node, node_position)
+        child_node = ImprovedNode(self.current_node, node_position)
+        child_node.move_from_parent = move
+        return child_node
 
     def get_absolute_direction(self, relative_direction: int, current_direction: int) -> int:
         resultant_direction = relative_direction + current_direction
@@ -478,14 +494,33 @@ class AutoPlanner():
         xB, yB = self.end_node.pose.x, self.end_node.pose.y
         return abs(xA - xB) + abs(yA - yB)
 
-    def is_node_higher_cost_yet_to_visit(self, node: ImprovedNode):
-        return len([i for i in self.yet_to_visit.queue if node.pose == i[1].pose and node.g > i[1].g]) > 0
+    def is_node_higher_cost_than_yet_to_visit(self, node: ImprovedNode):
+        """Check if node is already in yet to visit and has higher cost than
+        stored in yet to visit"""
+        for item in self.yet_to_visit.queue:
+            node_in_yet_to_visit = item[self.node_index_in_yet_to_visit]
+            if node.pose == node_in_yet_to_visit.pose and node.g > node_in_yet_to_visit.g:
+                return True
+        return False
 
-    def get_cost_current_node_to_child(self, node: ImprovedNode) -> int:
-        raise NotImplementedError
+    def set_straight_cost(self, cost):
+        self.straight_cost = cost
+
+    def get_cost_current_node_to_child(self, child_node: ImprovedNode) -> int:
+        move_to_child = child_node.move_from_parent
+        weighted_cost = self.straight_cost
+
+        if self.is_turning_move(move_to_child):
+            weighted_cost *= self.turning_factor
+
+        return weighted_cost
+
+    def is_turning_move(self, move: RobotMovement):
+        return move in self.turning_moves
 
     def search_path(self, maze, cost, start, end):
         self.set_maze(maze)
+        self.set_straight_cost(cost)
         # Create start and end node with initialized values for g, h and f
         self.start_node = self.initialize_node(start)
         self.end_node = self.initialize_node(end)
@@ -519,22 +554,18 @@ class AutoPlanner():
 
             # test if goal is reached or not, if yes then return the path
             if self.is_goal_reached():
-                break
+                return self.reconstruct_path(self.current_node)
 
             self.get_children_of_current_node()
 
             # Loop through children
             for child in self.children_current_node:
-                tempCost = cost
-
                 # Child is on the visited list (search entire visited list)
                 if self.is_node_already_visited(child):
                     continue
 
-                tempCost = self.get_cost_current_node_to_child(child)
-
                 # Create the f, g, and h values
-                child.g = self.current_node.g + tempCost
+                child.g = self.current_node.g + self.get_cost_current_node_to_child(child)
 
                 # Heuristic costs calculated here, this is using MANHATTAN distance
                 child.h = self.heuristics(child)
@@ -543,22 +574,38 @@ class AutoPlanner():
 
                 # Child is already in the yet_to_visit list and child has
                 # higher g cost than that in yet_to_visit
-                if self.is_node_higher_cost_yet_to_visit():
+                if self.is_node_higher_cost_than_yet_to_visit(child):
                     continue
 
                 # Add the child to the yet_to_visit list
                 self.add_node_to_yet_to_visit(child)
-        return return_path(self.current_node, self.maze)
+        return None
+
+    def reconstruct_path(self, current_node: ImprovedNode) -> list:
+        """Return a list of string of movements"""
+        node = current_node
+        path = []
+
+        while node.pose != self.start_node.pose:
+            # grow the path backwards and backtrack
+            path.append(node.move_from_parent.value)
+            node = node.parent
+
+        path.reverse()                 # reverse the path from start to goal
+        return path
+
 
 if __name__ == "__main__":
     _ = CellStatus.EMPTY
     c = CellStatus.EMPTY # current node
+    s = CellStatus.EMPTY # start node
+    t = CellStatus.EMPTY # target node
     o = CellStatus.OBS
     b = CellStatus.BOUNDARY
     maze = np.array([[_, _, _, _, _, _, _, _, _, _],
-                     [_, _, _, _, _, _, _, _, _, _],
+                     [_, s, _, _, _, _, _, _, _, _],
                      [_, _, _, _, _, _, b, b, b, _],
-                     [_, _, _, _, _, _, b, o, b, _],
+                     [_, _, _, _, t, _, b, o, b, _],
                      [_, _, _, _, _, _, b, b, b, _],
                      [_, _, _, _, _, _, _, _, _, _],
                      [_, c, _, _, _, _, _, _, _, _],
@@ -567,10 +614,13 @@ if __name__ == "__main__":
                      [_, _, _, _, _, _, _, _, _, _],])
     cost = 10
     start = [1, 1, constants.NORTH]
-    end = [3, 7, constants.SOUTH]
+    end = [3, 4, constants.NORTH]
     auto_planner = AutoPlanner()
     auto_planner.set_maze(maze)
     auto_planner.current_node = ImprovedNode(None, [6, 1, constants.EAST])
     auto_planner.get_children_of_current_node()
     for node in auto_planner.children_current_node:
         print(f"Child: (x, y, dir) = ({node.pose.x}, {node.pose.y}, {node.pose.direction})")
+    search_result = auto_planner.search_path(maze, cost, start, end)
+    print(search_result)
+    assert search_result == ['F', 'FR', 'F', 'F', 'BR', 'F', 'F']
