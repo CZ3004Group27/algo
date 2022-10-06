@@ -434,12 +434,20 @@ class AutoPlanner():
     def set_maze(self, maze):
         self.maze = maze
         self.get_maze_sizes()
+        self.set_boundary_for_nodes()
 
     def get_maze_sizes(self):
         self.size_x, self.size_y = np.shape(self.maze)
 
     def is_in_collision(self, node: ImprovedNode) -> bool:
-        return self.maze[node.pose.x][node.pose.y] in self.collision_statuses
+        if self.is_robot_within_maze_at_node(node):
+            return self.maze[node.pose.x][node.pose.y] in self.collision_statuses
+        else:
+            # outside maze, check that manhattan distance to any obstacle is
+            # above a certain threshold
+            for obs_x, obs_y in self.obs_coords:
+                raise NotImplementedError
+            return False
 
     def is_node_unreachable_from_parent(self, node: ImprovedNode) -> bool:
         if self.is_in_collision(node):
@@ -468,12 +476,24 @@ class AutoPlanner():
     def add_node_to_visited(self, node: ImprovedNode):
         self.visited_list.add(node.pose.to_tuple())
 
+    def manhattan_distance(self, xA, yA, xB, yB):
+        return abs(xA-xB) + abs(yA-yB)
+
+    def set_boundary_for_nodes(self):
+        """The node can be slightly outside of the maze"""
+        self.buffer = -1
+        self.right_boundary = self.size_x - 1 - self.buffer # right most node that robot is not out of maze
+        self.top_boundary = self.size_y - 1 - self.buffer # top most node that robot is not out of maze
+
+    def is_robot_within_maze_at_node(self, node: ImprovedNode):
+        """Check if the robot will be within maze if staying in this
+        node."""
+        return (0 <= node.pose.x < self.size_x) and (0 <= node.pose.y < self.size_y)
+
     def is_robot_within_boundary_at_node(self, node: ImprovedNode):
         """Check if the robot will be within boundary if staying in this
-        node"""
-        right_boundary = self.size_x-2 # right most node that robot is not out of maze
-        top_boundary = self.size_y-2 # top most node that robot is not out of maze
-        return (1 <= node.pose.x <= right_boundary) and (1 <= node.pose.y <= top_boundary)
+        node. Boundary may be bigger or smaller than maze"""
+        return (self.buffer <= node.pose.x <= self.right_boundary) and (self.buffer <= node.pose.y <= self.top_boundary)
 
     def get_children_of_current_node(self):
         # Generate children from all adjacent squares
@@ -530,7 +550,7 @@ class AutoPlanner():
         """Return estimated cost to go to the end node"""
         xA, yA = node.pose.x, node.pose.y
         xB, yB = self.end_node.pose.x, self.end_node.pose.y
-        return abs(xA - xB) + abs(yA - yB)
+        return self.manhattan_distance(xA, yA, xB, yB)
 
     def is_node_higher_cost_than_yet_to_visit(self, node: ImprovedNode):
         """Check if node is already in yet to visit and has higher cost than
@@ -584,10 +604,10 @@ class AutoPlanner():
     def reset_potential_goal_nodes(self):
         self.potential_goal_nodes = list()
 
-    def add_potential_goal_node(self, node: ImprovedNode):
+    def add_potential_goal_node(self, node: ImprovedNode=None):
         self.potential_goal_nodes.append(node)
 
-    def search_path(self, maze, cost, start, end):
+    def search_path(self, maze, cost, start, end, obs_coords: list):
         self.set_maze(maze)
         self.set_straight_cost(cost)
         # Create start and end node with initialized values for g, h and f
@@ -596,6 +616,7 @@ class AutoPlanner():
         self.reset_potential_goal_nodes()
         self.add_potential_goal_node(self.end_node)
         self.set_neighbours_as_potential_goal_nodes()
+        self.obs_coords = obs_coords # list of coordinates of obstacle cell
 
         self.initialize_yet_to_visit()
         self.initialize_visited_nodes()

@@ -351,7 +351,7 @@ class Simulator:
             fastest_route = self.astar_hamiltonian.convert_shortest_path_to_ordered_targets(shortest_path)
             logging.info("Astar route: " + str(fastest_route))
 
-            optimized_fastest_route = self.grid.get_optimized_target_locations(fastest_route)
+            # optimized_fastest_route = self.grid.get_optimized_target_locations(fastest_route)
             optimized_fastest_route = fastest_route
             self.car.optimized_target_locations = optimized_fastest_route[1:]
             logging.info("Optimized Astar route: " + str(optimized_fastest_route))

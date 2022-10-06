@@ -109,6 +109,7 @@ class PathPlan(object):
             print("No skipped obstacles to run")
             return
 
+        print("Restart robot to go to skipped obstacles")
         while len(self.skipped_obstacles) != 0:
             target = self.skipped_obstacles.pop(0)
             self.plan_full_path_to(target)
