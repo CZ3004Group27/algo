@@ -19,6 +19,7 @@ class PathPlan(object):
         self.robot = robot
         self.fastest_route = fastest_route
         self.target_pose: Pose = Pose() # pose to take a good photo of image
+        self.target = None # list of [x, y, dir, Obstacle_cell]
         self.robot_pose: Pose = self.robot.get_robot_pose()
         self.obstacle_cell = None
         self.collection_of_movements = []
@@ -84,6 +85,7 @@ class PathPlan(object):
     def get_target_pose_obstacle_cell_from(self, target: list):
         """Get the target pose and obstacle cell from a list of [x, y, dir, Cell]
         """
+        self.target = target
         self.target_pose.set_pose(target[:3])
         self.obstacle_cell = target[3]
 
@@ -100,7 +102,7 @@ class PathPlan(object):
         return search_result
 
     def skip_current_target(self):
-        self.skipped_obstacles.append(self.target_pose)
+        self.skipped_obstacles.append(self.target)
 
     def restart_robot(self):
         if len(self.skipped_obstacles) == 0:
