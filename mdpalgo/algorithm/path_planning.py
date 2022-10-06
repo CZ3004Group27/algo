@@ -1515,17 +1515,22 @@ class PathPlan(object):
         self.send_to_rpi()
 
     def execute_auto_search_result(self, search_result: tuple):
-        # Execute gray route
-        draw_path, path = search_result[0], search_result[1]
+        # # Execute gray route
+        # draw_path, path = search_result[0], search_result[1]
+        #
+        # for r in range(20):
+        #     for c in range(20):
+        #         if draw_path[r][c] >= 5:
+        #             self.grid.cells[r][c].set_path_status()
+        # # Colour rough route gray
+        # self.robot.redraw_car()
+        #
+        # movements = self.translate_path_to_movements(path)
 
-        for r in range(20):
-            for c in range(20):
-                if draw_path[r][c] >= 5:
-                    self.grid.cells[r][c].set_path_status()
-        # Colour rough route gray
-        self.robot.redraw_car()
+        movements = search_result
 
-        movements = self.translate_path_to_movements(path)
+        self.draw_path_based_on_movements(movements)
+
         for move in movements:
             self.do_move(move)
 
@@ -1535,6 +1540,236 @@ class PathPlan(object):
         self.plan_trip_by_robot_target_directions(self.target_pose.x, self.target_pose.y, self.robot.grid_x,
                                                     self.robot.grid_y,
                                                     self.robot.angle, self.target_pose.direction)
+
+    def draw_path_based_on_movements(self, movements):
+        current_cell_x, current_cell_y, current_direction = self.get_robot_pos()
+
+        previous_cell_x, previous_cell_y, previous_direction = current_cell_x, current_cell_y, current_direction
+
+        # set path status for initial cell
+        self.grid.cells[previous_cell_x][previous_cell_y].set_path_status()
+
+        for movement in movements:
+            if movement == "F":
+                if current_direction == constants.NORTH:
+                    current_cell_x = previous_cell_x - 1
+                    current_cell_y = previous_cell_y
+
+                elif current_direction == constants.SOUTH:
+                    current_cell_x = previous_cell_x + 1
+                    current_cell_y = previous_cell_y
+
+                elif current_direction == constants.WEST:
+                    current_cell_x = previous_cell_x
+                    current_cell_y = previous_cell_y - 1
+
+                elif current_direction == constants.EAST:
+                    current_cell_x = previous_cell_x
+                    current_cell_y = previous_cell_y + 1
+
+            elif movement == "B":
+                if current_direction == constants.NORTH:
+                    current_cell_x = previous_cell_x + 1
+                    current_cell_y = previous_cell_y
+
+                elif current_direction == constants.SOUTH:
+                    current_cell_x = previous_cell_x - 1
+                    current_cell_y = previous_cell_y
+
+                elif current_direction == constants.WEST:
+                    current_cell_x = previous_cell_x
+                    current_cell_y = previous_cell_y + 1
+
+                elif current_direction == constants.EAST:
+                    current_cell_x = previous_cell_x
+                    current_cell_y = previous_cell_y - 1
+
+            elif movement == "FL":
+                if current_direction == constants.NORTH:
+                    current_cell_x = previous_cell_x - 3
+                    current_cell_y = previous_cell_y - 3
+                    current_direction = constants.WEST
+
+                    for i in range(1, 4):
+                        self.grid.cells[previous_cell_x-i][previous_cell_y].set_path_status()
+
+                    for i in range(1, 4):
+                        self.grid.cells[current_cell_x][previous_cell_y-i].set_path_status()
+
+                elif current_direction == constants.SOUTH:
+                    current_cell_x = previous_cell_x + 3
+                    current_cell_y = previous_cell_y + 3
+                    current_direction = constants.EAST
+
+                    for i in range(1, 4):
+                        self.grid.cells[previous_cell_x+i][previous_cell_y].set_path_status()
+
+                    for i in range(1, 4):
+                        self.grid.cells[current_cell_x][previous_cell_y+i].set_path_status()
+
+                elif current_direction == constants.WEST:
+                    current_cell_x = previous_cell_x + 3
+                    current_cell_y = previous_cell_y - 3
+                    current_direction = constants.SOUTH
+
+                    for i in range(1, 4):
+                        self.grid.cells[previous_cell_x+i][current_cell_y].set_path_status()
+
+                    for i in range(1, 4):
+                        self.grid.cells[previous_cell_x][previous_cell_y-i].set_path_status()
+
+                elif current_direction == constants.EAST:
+                    current_cell_x = previous_cell_x - 3
+                    current_cell_y = previous_cell_y + 3
+                    current_direction = constants.NORTH
+
+                    for i in range(1, 4):
+                        self.grid.cells[previous_cell_x-i][current_cell_y].set_path_status()
+
+                    for i in range(1, 4):
+                        self.grid.cells[previous_cell_x][previous_cell_y+i].set_path_status()
+
+            elif movement == "FR":
+                if current_direction == constants.NORTH:
+                    current_cell_x = previous_cell_x - 3
+                    current_cell_y = previous_cell_y + 3
+                    current_direction = constants.EAST
+
+                    for i in range(1, 4):
+                        self.grid.cells[previous_cell_x-i][previous_cell_y].set_path_status()
+
+                    for i in range(1, 4):
+                        self.grid.cells[current_cell_x][previous_cell_y+i].set_path_status()
+
+                elif current_direction == constants.SOUTH:
+                    current_cell_x = previous_cell_x + 3
+                    current_cell_y = previous_cell_y - 3
+                    current_direction = constants.WEST
+
+                    for i in range(1, 4):
+                        self.grid.cells[previous_cell_x+i][previous_cell_y].set_path_status()
+
+                    for i in range(1, 4):
+                        self.grid.cells[current_cell_x][previous_cell_y-i].set_path_status()
+
+                elif current_direction == constants.WEST:
+                    current_cell_x = previous_cell_x - 3
+                    current_cell_y = previous_cell_y - 3
+                    current_direction = constants.NORTH
+
+                    for i in range(1, 4):
+                        self.grid.cells[previous_cell_x-i][current_cell_y].set_path_status()
+
+                    for i in range(1, 4):
+                        self.grid.cells[previous_cell_x][previous_cell_y-i].set_path_status()
+
+                elif current_direction == constants.EAST:
+                    current_cell_x = previous_cell_x + 3
+                    current_cell_y = previous_cell_y + 3
+                    current_direction = constants.SOUTH
+
+                    for i in range(1, 4):
+                        self.grid.cells[previous_cell_x+i][current_cell_y].set_path_status()
+
+                    for i in range(1, 4):
+                        self.grid.cells[previous_cell_x][previous_cell_y+i].set_path_status()
+
+            elif movement == "BL":
+                if current_direction == constants.NORTH:
+                    current_cell_x = previous_cell_x + 3
+                    current_cell_y = previous_cell_y - 3
+                    current_direction = constants.EAST
+
+                    for i in range(1, 4):
+                        self.grid.cells[previous_cell_x+i][previous_cell_y].set_path_status()
+
+                    for i in range(1, 4):
+                        self.grid.cells[current_cell_x][previous_cell_y-i].set_path_status()
+
+                elif current_direction == constants.SOUTH:
+                    current_cell_x = previous_cell_x - 3
+                    current_cell_y = previous_cell_y + 3
+                    current_direction = constants.WEST
+
+                    for i in range(1, 4):
+                        self.grid.cells[previous_cell_x-i][previous_cell_y].set_path_status()
+
+                    for i in range(1, 4):
+                        self.grid.cells[current_cell_x][previous_cell_y+i].set_path_status()
+
+                elif current_direction == constants.WEST:
+                    current_cell_x = previous_cell_x + 3
+                    current_cell_y = previous_cell_y + 3
+                    current_direction = constants.NORTH
+
+                    for i in range(1, 4):
+                        self.grid.cells[previous_cell_x+i][current_cell_y].set_path_status()
+
+                    for i in range(1, 4):
+                        self.grid.cells[previous_cell_x][previous_cell_y+i].set_path_status()
+
+                elif current_direction == constants.EAST:
+                    current_cell_x = previous_cell_x - 3
+                    current_cell_y = previous_cell_y - 3
+                    current_direction = constants.SOUTH
+
+                    for i in range(1, 4):
+                        self.grid.cells[previous_cell_x-i][current_cell_y].set_path_status()
+
+                    for i in range(1, 4):
+                        self.grid.cells[previous_cell_x][previous_cell_y-i].set_path_status()
+
+            elif movement == "BR":
+                if current_direction == constants.NORTH:
+                    current_cell_x = previous_cell_x + 3
+                    current_cell_y = previous_cell_y + 3
+                    current_direction = constants.WEST
+
+                    for i in range(1, 4):
+                        self.grid.cells[previous_cell_x+i][previous_cell_y].set_path_status()
+
+                    for i in range(1, 4):
+                        self.grid.cells[current_cell_x][previous_cell_y+i].set_path_status()
+
+                elif current_direction == constants.SOUTH:
+                    current_cell_x = previous_cell_x - 3
+                    current_cell_y = previous_cell_y - 3
+                    current_direction = constants.EAST
+
+                    for i in range(1, 4):
+                        self.grid.cells[previous_cell_x-i][previous_cell_y].set_path_status()
+
+                    for i in range(1, 4):
+                        self.grid.cells[current_cell_x][previous_cell_y-i].set_path_status()
+
+                elif current_direction == constants.WEST:
+                    current_cell_x = previous_cell_x - 3
+                    current_cell_y = previous_cell_y + 3
+                    current_direction = constants.SOUTH
+
+                    for i in range(1, 4):
+                        self.grid.cells[previous_cell_x-i][current_cell_y].set_path_status()
+
+                    for i in range(1, 4):
+                        self.grid.cells[previous_cell_x][previous_cell_y+i].set_path_status()
+
+                elif current_direction == constants.EAST:
+                    current_cell_x = previous_cell_x + 3
+                    current_cell_y = previous_cell_y - 3
+                    current_direction = constants.NORTH
+
+                    for i in range(1, 4):
+                        self.grid.cells[previous_cell_x+i][current_cell_y].set_path_status()
+
+                    for i in range(1, 4):
+                        self.grid.cells[previous_cell_x][previous_cell_y-i].set_path_status()
+
+            # set path status for current cell in "F" or "B"
+            if current_cell_x == previous_cell_x or current_cell_y == previous_cell_y:
+                self.grid.cells[current_cell_x][current_cell_y].set_path_status()
+
+        # Colour rough route gray
+        self.robot.redraw_car()
 
     def check_movement_possible(self, a, b, x, y, robot_direction, target_direction):
         constants.IS_CHECKING = True
