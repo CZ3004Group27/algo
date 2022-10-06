@@ -5,7 +5,6 @@ from mdpalgo import constants
 from mdpalgo.map.cell import Cell, CellStatus
 from mdpalgo.map.configuration import Pose
 from enum import Enum
-import time
 
 class RobotMovement(Enum):
     FORWARD = "F"
@@ -415,7 +414,15 @@ class AutoPlanner():
         self.visited_list = set()
 
     def add_node_to_yet_to_visit(self, node: ImprovedNode):
-        self.yet_to_visit.put((node.f, time.time(), node))
+        self.yet_to_visit.put((node.f, self.get_id(), node))
+
+    def reset_id(self):
+        # id for the node in the yet_to_visit_queue
+        self.id = 0
+
+    def get_id(self):
+        self.id += 1
+        return self.id
 
     def get_node_from_yet_to_visit(self) -> ImprovedNode:
         """Remove and return the node with lowest f from queue"""
@@ -592,6 +599,7 @@ class AutoPlanner():
 
         self.initialize_yet_to_visit()
         self.initialize_visited_nodes()
+        self.reset_id()
 
         self.add_node_to_yet_to_visit(self.start_node)
 
