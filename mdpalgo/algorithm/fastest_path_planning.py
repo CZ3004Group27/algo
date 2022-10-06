@@ -328,6 +328,7 @@ class ImprovedNode:
         self.parent = parent
         self.pose = Pose(pose)
         self.move_from_parent: RobotMovement = None
+        self.displacement_from_parent: np.ndarray
 
         self.g = 0
         self.h = 0
@@ -371,6 +372,13 @@ class AutoPlanner():
                                       [-1, 0]]),
             constants.WEST: np.array([[0, -1],
                                       [1, 0]]),
+        }
+
+        self.direction_to_unit_forward_vector = {
+            constants.NORTH: np.array([0, 1]),
+            constants.SOUTH: np.array([0, -1]),
+            constants.EAST: np.array([1, 0]),
+            constants.WEST: np.array([-1, 0]),
         }
 
         # turning cost = straight cost * turning factor
@@ -425,6 +433,24 @@ class AutoPlanner():
     def is_in_collision(self, node: ImprovedNode) -> bool:
         return self.maze[node.pose.x][node.pose.y] in self.collision_statuses
 
+    def is_node_unreachable_from_parent(self, node: ImprovedNode) -> bool:
+        if self.is_in_collision(node):
+            return True
+
+        parent_node = node.parent
+        move = node.move_from_parent
+        displacement_from_current = node.displacement_from_parent
+
+        # for turning move, also check the corner of the move
+        if move in self.turning_moves:
+            unit_forward_vector = self.direction_to_unit_forward_vector[node.parent.pose.direction]
+            corner_displacement = np.matmul(unit_forward_vector, displacement_from_current) * unit_forward_vector
+            corner_node = ImprovedNode(None, [corner_displacement[0] + parent_node.pose.x,
+                                              corner_displacement[1] + parent_node.pose.y,
+                                              constants.NORTH]) # the direction is not important since we only checking collision
+            return self.is_in_collision(corner_node)
+
+
     def is_goal_reached(self) -> bool:
         return self.current_node.pose == self.end_node.pose
 
@@ -451,8 +477,8 @@ class AutoPlanner():
             if not self.is_robot_within_boundary_at_node(new_node):
                 continue
 
-            # Make sure walkable terrain
-            if self.is_in_collision(self.current_node):
+            # Make sure node is reachable
+            if self.is_node_unreachable_from_parent(new_node):
                 continue
 
             # Append
@@ -470,6 +496,7 @@ class AutoPlanner():
             self.get_absolute_direction(relative_direction_from_current_node, self.current_node.pose.direction)]
         child_node = ImprovedNode(self.current_node, node_position)
         child_node.move_from_parent = move
+        child_node.displacement_from_parent = displacement_from_current_node
         return child_node
 
     def get_absolute_direction(self, relative_direction: int, current_direction: int) -> int:

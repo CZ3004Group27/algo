@@ -401,8 +401,8 @@ class Robot(object):
         final_pixel_pos = arglist[1]
         self.angle = final_angle
         self.pixel_pos = final_pixel_pos
-        self.grid_x = self.grid.pixel_to_grid(final_pixel_pos)[0]
-        self.grid_y = self.grid.pixel_to_grid(final_pixel_pos)[1]
+        self.grid_x = int(self.grid.pixel_to_grid(final_pixel_pos)[0])
+        self.grid_y = int(self.grid.pixel_to_grid(final_pixel_pos)[1])
         self.car_rect = pygame.Rect(self.pixel_pos[0] - (0.5 * self.screen_width),
                                     self.pixel_pos[1] - (0.5 * self.screen_height),
                                     self.screen_width, self.screen_height)
