@@ -146,7 +146,7 @@ class AutoPlanner():
             return self.maze[node.pose.x][node.pose.y] in self.collision_statuses
 
         # outside maze, check if the buffer zone allow this
-        if self.buffer_zone_size > 0:
+        if self.buffer_zone_size >= 0:
             return True
 
         # check that manhattan distance to any obstacle is
