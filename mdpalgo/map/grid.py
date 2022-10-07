@@ -1,13 +1,27 @@
+"""
+Explanation on coordinate system:
+    * the display screen uses a coordinate system with
+        + origin: top left
+        + x-axis: pointing right
+        + y-axis: pointing down
+    * the grid object uses a coordinate system with
+        + origin: bottom left
+        + x-axis: pointing right
+        + y-axis: pointing up
+"""
+
+
 import logging
 
 from mdpalgo import constants
 import pygame
 from mdpalgo.map.cell import Cell, CellStatus
+import numpy as np
 
 # This sets the margin between each Cell
 MARGIN = 2
 
-# This is the margin around the top and left of the grids
+# This is the margin around the top and left of the grid on screen display
 OUTER_MARGIN = 120
 
 COLOR_DICT = {
@@ -22,26 +36,40 @@ COLOR_DICT = {
 class Grid(object):
 
     def __init__(self, grid_column, grid_row, block_size):
-        self.grid_column = grid_column
-        self.grid_row = grid_row
+        self.num_columns = grid_column
+        self.num_rows = grid_row
+        self.max_column = self.num_columns - 1
+        self.max_row = self.num_rows - 1
+        self.start_zone_size = 4
         self.block_size = block_size
-        self.cells = [[0 for x in range(grid_column)] for y in range(grid_row)]
-        self.cells_virtual = [[0 for x in range(grid_column)] for y in range(grid_row)]
+        self.cells = np.empty((self.num_rows, self.num_columns), dtype=Cell)
+        self.initialize_cells()
         self.optimized_target_locations = None
         self.obstacle_cells = {}
         self.reset_data()
 
+    def initialize_cells(self):
+        for row in range(self.num_rows):
+            for column in range(self.num_columns):
+                if column < self.start_zone_size and row > self.max_row - self.start_zone_size:
+                    self.cells[row][column] = Cell(column, (self.max_row - row), CellStatus.START)  # 19 is to correct the positive direction
+                else:
+                    self.cells[row][column] = Cell(column, (self.max_row - row), CellStatus.EMPTY)
+
+
     def reset_data(self):
-        """Reset the grid data"""
+        """Reset data in all grid cells"""
         # NOTE!! row and columns start from the top right, but coordinates have to start from the bottom left
         # x-coord = column; y-coord = 19-row
-        self.obstacle_cells = {}
-        for row in range(self.grid_row):
-            for column in range(self.grid_column):
-                if column < 4 and row > 15:
-                    self.cells[row][column] = Cell(column, (19 - row), CellStatus.START)  # 19 is to correct the positive direction
+        self.obstacle_cells.clear()
+        for row in range(self.num_rows):
+            for column in range(self.num_columns):
+                self.cells[row][column].remove_obstacle()
+
+                if column < self.start_zone_size and row > self.max_row - self.start_zone_size:
+                    self.cells[row][column].set_starting_area_status()
                 else:
-                    self.cells[row][column] = Cell(column, (19 - row), CellStatus.EMPTY)
+                    self.cells[row][column].set_empty_status()
 
     def reset(self, screen):
         """Reset both grid data and reflect this on the UI"""
@@ -156,21 +184,23 @@ class Grid(object):
         if cell.get_cell_status() == CellStatus.OBS:
             if cell.get_obstacle().get_obstacle_id() not in self.obstacle_cells.keys():
                 self.obstacle_cells[cell.get_obstacle().get_obstacle_id()] = cell  # '1-12': cell()
-        for r in range(self.grid_row):
-            for c in range(self.grid_column):
+        for r in range(self.num_rows):
+            for c in range(self.num_columns):
                 a = self.get_cell(r, c)
                 self.set_obstacle_boundary_cells(a)  # runs only for obstacle cell
 
-        # Update virtual map for path planning
-        for r in range(20):
-            for c in range(20):
-                cell_status = self.cells[r][c].get_cell_status()
-                self.cells_virtual[r][c] = cell_status
+    def get_virtual_map(self):
+        # Get virtual map contains just the cell status
+        def get_cell_status(cell: Cell):
+            return cell.get_cell_status()
 
-    def grid_clicked(self, x_coordinate, y_coordinate):
+        return get_cell_status(self.cells)
+
+    def grid_clicked(self, pixel_x, pixel_y):
         # Change the x/y screen coordinates to grid coordinates
-        column = (x_coordinate - 120) // (self.block_size + MARGIN)
-        row = (y_coordinate - 120) // (self.block_size + MARGIN)
+        x_grid, y_grid = self.pixel_to_grid((pixel_x, pixel_y))
+
+        row, column = self.max_row - y_grid, x_grid
 
         # Set that location to one
         cell = self.get_cell(row, column)
@@ -184,18 +214,12 @@ class Grid(object):
             # remove the key if it exists, else does nothing
             self.obstacle_cells.pop(key_to_remove, None)
         self.unset_obstacle_boundary_cells(cell)  # runs only for empty cell
-        for r in range(self.grid_row):
-            for c in range(self.grid_column):
+        for r in range(self.num_rows):
+            for c in range(self.num_columns):
                 a = self.get_cell(r, c)
                 self.set_obstacle_boundary_cells(a)  # runs only for obstacle cell
 
-        # Update virtual map for path planning
-        for r in range(20):
-            for c in range(20):
-                cell_status = self.cells[r][c].get_cell_status()
-                self.cells_virtual[r][c] = cell_status
-
-        logging.info("Clicked (x,y): (" + str(x_coordinate) + "," + str(y_coordinate) + "); column, row: " + str(column)
+        logging.info("Clicked (x,y): (" + str(pixel_x) + "," + str(pixel_y) + "); column, row: " + str(column)
                      + "," + str(row) + "; Grid coordinates: " + str(cell.get_xcoord()) + " " + str(cell.get_ycoord())
                      + "; Direction: " + str(cell.get_obstacle_direction()))
 

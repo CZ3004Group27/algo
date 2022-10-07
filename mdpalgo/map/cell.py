@@ -59,6 +59,9 @@ class Cell:
     def get_obstacle(self):
         return self.obstacle
 
+    def remove_obstacle(self):
+        self.obstacle = None
+
     def get_obstacle_direction(self):
         if self.obstacle is None:
             return None
