@@ -90,7 +90,11 @@ class PathPlan(object):
         end = list(self.target_pose.to_tuple())
         cost = 10  # cost per movement
         maze = self.grid.get_virtual_map()
-        self.collection_of_movements, self.path_according_to_movements = self.auto_planner.get_movements_and_path_to_goal(maze, cost, start, end)
+        obstacle_coords = [
+            (cell.x_coordinate, cell.y_coordinate) for cell in self.grid.obstacle_cells.values()
+        ]
+        self.collection_of_movements, self.path_according_to_movements = self.auto_planner.get_movements_and_path_to_goal(
+            maze, cost, start, end, obstacle_coords)
 
     def execute_auto_search_result(self):
         for move_index in range(len(self.collection_of_movements)):

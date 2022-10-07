@@ -28,7 +28,9 @@ class ImprovedNode:
 
 class AutoPlanner():
     def __init__(self):
-        self.TURNING_RADIUS = 3
+        self.TURNING_RADIUS = constants.TURNING_RADIUS
+        # if robot node is at this distance away from obstacle, safe!
+        self.safe_distance = 4
         # map movement to a relative vector wrt the current direction
         self.map_move_to_relative_displacement =  {
             RobotMovement.FORWARD: [0, 1],
@@ -142,13 +144,24 @@ class AutoPlanner():
     def is_in_collision(self, node: ImprovedNode) -> bool:
         if self.is_robot_within_maze_at_node(node):
             return self.maze[node.pose.x][node.pose.y] in self.collision_statuses
-        else:
-            # outside maze, check that manhattan distance to any obstacle is
-            # above a certain threshold
-            if self.obs_coords:
-                for obs_x, obs_y in self.obs_coords:
-                    raise NotImplementedError
-            return False
+
+        # outside maze, check if the buffer zone allow this
+        if self.buffer_zone_size > 0:
+            return True
+
+        # check that manhattan distance to any obstacle is
+        # above a certain threshold
+        if not self.obs_coords: # the obstacle information is not provided
+            return True
+
+        for obs_x, obs_y in self.obs_coords:
+            distance = self.manhattan_distance(
+                node.pose.x, node.pose.y,
+                obs_x, obs_y)
+            if distance < self.safe_distance:
+                return True
+
+        return False
 
     def is_node_unreachable_from_parent(self, node: ImprovedNode) -> bool:
         if self.is_in_collision(node):
@@ -182,9 +195,9 @@ class AutoPlanner():
 
     def set_boundary_for_nodes(self):
         """The node can be slightly outside of the maze"""
-        self.buffer = constants.BOUNDARY_BUFFER
-        self.right_boundary = self.size_x - 1 - self.buffer # right most node that robot is not out of maze
-        self.top_boundary = self.size_y - 1 - self.buffer # top most node that robot is not out of maze
+        self.buffer_zone_size = constants.BOUNDARY_BUFFER
+        self.right_boundary = self.size_x - 1 - self.buffer_zone_size # right most node that robot is not out of maze
+        self.top_boundary = self.size_y - 1 - self.buffer_zone_size # top most node that robot is not out of maze
 
     def is_robot_within_maze_at_node(self, node: ImprovedNode):
         """Check if the robot will be within maze if staying in this
@@ -194,7 +207,7 @@ class AutoPlanner():
     def is_robot_within_boundary_at_node(self, node: ImprovedNode):
         """Check if the robot will be within boundary if staying in this
         node. Boundary may be bigger or smaller than maze"""
-        return (self.buffer <= node.pose.x <= self.right_boundary) and (self.buffer <= node.pose.y <= self.top_boundary)
+        return (self.buffer_zone_size <= node.pose.x <= self.right_boundary) and (self.buffer_zone_size <= node.pose.y <= self.top_boundary)
 
     def get_children_of_current_node(self):
         # Generate children from all adjacent squares
@@ -306,7 +319,7 @@ class AutoPlanner():
     def add_potential_goal_node(self, node: ImprovedNode=None):
         self.potential_goal_nodes.append(node)
 
-    def get_movements_and_path_to_goal(self, maze, cost, start, end, obs_coords: list=None):
+    def get_movements_and_path_to_goal(self, maze, cost, start, end, obs_coords: list):
         self.set_maze(maze)
         self.set_straight_cost(cost)
         # Create start and end node with initialized values for g, h and f

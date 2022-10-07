@@ -42,7 +42,7 @@ class Grid(object):
         self.max_y = self.size_y - 1
         self.start_zone_size = 4
         self.block_size = block_size # size in cm of 1 square cell
-        self.cells = np.empty((self.size_y, self.size_x), dtype=Cell)
+        self.cells = np.empty((self.size_x, self.size_y), dtype=Cell)
         self.initialize_cells()
         self.optimized_target_locations = None
         self.obstacle_cells = {}
