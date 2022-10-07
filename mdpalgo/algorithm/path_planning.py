@@ -96,7 +96,7 @@ class PathPlan(object):
                 self.target_pose.y,
                 self.target_pose.direction]  # ending position
         cost = 10  # cost per movement
-        maze = rotate_maze(self.grid.get_virtual_map)
+        maze = self.grid.get_virtual_map()
         search_result = self.auto_planner.search_path(maze, cost, start, end)
 
         return search_result
@@ -1924,23 +1924,3 @@ class PathPlan(object):
             constants.IS_CHECKING = False
             print("Check-fail:", area)
             return False
-
-def rotate_maze(maze)->np.ndarray:
-    """Rotate the axes by 270 degrees to keep it consistent with model of the
-    robot zone
-
-    Origin: bottom left corner of the map
-    x-axis: to the right
-    y-axis: upwards
-    """
-    return np.rot90(maze, 3)
-
-if __name__ == "__main__":
-    raw_maze = [[1,2,3],
-                [4,5,6],
-                [7,8,9]]
-    flipped_maze = rotate_maze(raw_maze)
-    assert flipped_maze[1][2] == 2
-    assert flipped_maze == np.array([[7,4,1],
-                                     [8,5,2],
-                                     [9,6,3]])

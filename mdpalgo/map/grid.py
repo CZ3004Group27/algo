@@ -47,6 +47,7 @@ class Grid(object):
         self.optimized_target_locations = None
         self.obstacle_cells = {}
         self.reset_data()
+        self.obstacle_statuses = [CellStatus.OBS, CellStatus.VISITED_OBS]
 
     def initialize_cells(self):
         for x in range(self.size_x):
@@ -189,48 +190,56 @@ class Grid(object):
         cell = self.get_cell_by_xycoords(grid_x, grid_y)
         cell.create_obstacle(dir)
 
-        # Add/remove cell from dict of obstacles accordingly
-        if cell.get_cell_status() == CellStatus.OBS:
-            if cell.get_obstacle().get_obstacle_id() not in self.obstacle_cells.keys():
-                self.obstacle_cells[cell.get_obstacle().get_obstacle_id()] = cell  # '1-12': cell()
-        for r in range(self.size_y):
-            for c in range(self.size_x):
-                a = self.get_cell_by_row_column(r, c)
-                self.set_obstacle_boundary_cells(a)  # runs only for obstacle cell
+        self.add_cell_to_obstacle_list(cell)
+        self.set_obstacle_boundary_cells_around(cell)
 
     def get_virtual_map(self):
         # Get virtual map contains just the cell status
         def get_cell_status(cell: Cell):
             return cell.get_cell_status()
 
-        return get_cell_status(self.cells)
+        return np.vectorize(get_cell_status)(self.cells)
+
+    def is_obstacle_status(self, cell_status: CellStatus):
+        return cell_status in self.obstacle_statuses
+
+    def get_obstacle_key_from_xy_coords(self, x, y) -> str:
+        return f"{x}-{y}"
+
+    def remove_cell_from_obstacle_list(self, cell: Cell):
+        obs_key_to_remove = self.get_obstacle_key_from_xy_coords(cell.get_xcoord(), cell.get_ycoord())
+        self.obstacle_cells.pop(obs_key_to_remove)
+
+    def add_cell_to_obstacle_list(self, cell: Cell):
+        self.obstacle_cells[cell.get_obstacle().get_obstacle_id()] = cell
 
     def grid_clicked(self, pixel_x, pixel_y):
         # Change the x/y screen coordinates to grid coordinates
         x_grid, y_grid = self.pixel_to_grid((pixel_x, pixel_y))
 
-        row, column = self.max_y - y_grid, x_grid
+        selected_cell = self.get_cell_by_xycoords(x_grid, y_grid)
+        previous_status = selected_cell.get_cell_status()
+        selected_cell.cell_clicked()
+        current_status = selected_cell.get_cell_status()
 
-        # Set that location to one
-        cell = self.get_cell_by_row_column(row, column)
-        cell.cell_clicked()
-        # Add/remove cell from dict of obstacles accordingly
-        if cell.get_cell_status() == CellStatus.OBS:
-            if cell.get_obstacle().get_obstacle_id() not in self.obstacle_cells:
-                self.obstacle_cells[cell.get_obstacle().get_obstacle_id()] = cell  # '1-12': cell()
-        elif cell.get_cell_status() == CellStatus.EMPTY:
-            key_to_remove = str(cell.get_xcoord()) + '-' + str(cell.get_ycoord())  # '1-12'
-            # remove the key if it exists, else does nothing
-            self.obstacle_cells.pop(key_to_remove, None)
-        self.unset_obstacle_boundary_cells(cell)  # runs only for empty cell
-        for r in range(self.size_y):
-            for c in range(self.size_x):
-                a = self.get_cell_by_row_column(r, c)
-                self.set_obstacle_boundary_cells(a)  # runs only for obstacle cell
+        logging.info("Clicked (x,y): (" + str(pixel_x) + "," + str(pixel_y) + "); Grid coordinates: " + str(selected_cell.get_xcoord()) + " " + str(selected_cell.get_ycoord())
+                     + "; Direction: " + str(selected_cell.get_obstacle_direction()))
 
-        logging.info("Clicked (x,y): (" + str(pixel_x) + "," + str(pixel_y) + "); column, row: " + str(column)
-                     + "," + str(row) + "; Grid coordinates: " + str(cell.get_xcoord()) + " " + str(cell.get_ycoord())
-                     + "; Direction: " + str(cell.get_obstacle_direction()))
+        if self.is_obstacle_status(previous_status) and self.is_obstacle_status(current_status):
+            return
+
+        elif self.is_obstacle_status(previous_status) and not self.is_obstacle_status(current_status):
+            self.remove_cell_from_obstacle_list(selected_cell)
+            self.unset_obstacle_boundary_cells(selected_cell)
+            for remaining_obstacle_cell in self.obstacle_cells.values():
+                self.set_obstacle_boundary_cells_around(remaining_obstacle_cell)
+
+        elif not self.is_obstacle_status(previous_status) and self.is_obstacle_status(current_status):
+            self.add_cell_to_obstacle_list(selected_cell)
+            self.set_obstacle_boundary_cells_around(selected_cell)
+
+        else:
+            raise Exception("Cell status does not update properly. On click, cell does not become obstacle or get removed from being an obstacle.")
 
     def get_boundary_cells_coords(self, cell: Cell):
         """Return a list of coordinates [x_coord, y_coord] of the cells
@@ -245,21 +254,30 @@ class Grid(object):
         ]
         return boundary_cells
 
-    def set_obstacle_boundary_cells(self, cell: Cell):
+    def set_obstacle_boundary_cells_around(self, obstacle_cell: Cell):
         """For an obstacle cell, set the statuses of the cells around it to
         boundary status"""
-        if cell.get_cell_status() not in [CellStatus.OBS, CellStatus.VISITED_OBS]:
-            return
+        if not self.is_obstacle_status(obstacle_cell.get_cell_status()):
+            raise Exception("Attempt to set boundary around a non-obstacle cell.")
 
-        boundary_cells = self.get_boundary_cells_coords(cell)
+        boundary_cells = self.get_boundary_cells_coords(obstacle_cell)
         # Set status of cells around obstacle as boundary
-        for [x, y] in boundary_cells:
-            if 0 <= x <= self.max_x and 0 <= y <= self.max_y:
-                cell = self.get_cell_by_xycoords(x, y)
-                if cell.get_cell_status() in [CellStatus.EMPTY, CellStatus.PATH]:
-                    cell.set_obstacle_boundary_status()
+        for x, y in boundary_cells:
+            if not self.is_xy_coords_within_grid(x, y):
+                continue
 
-    def unset_obstacle_boundary_cells(self, cell):
+            boundary_cell = self.get_cell_by_xycoords(x, y)
+            if not self.is_obstacle_status(boundary_cell.get_cell_status()):
+                boundary_cell.set_obstacle_boundary_status()
+
+    def is_x_coord_within_grid(self, x):
+        return 0 <= x <= self.max_x
+    def is_y_coord_within_grid(self, y):
+        return 0 <= y <= self.max_y
+    def is_xy_coords_within_grid(self, x, y):
+        return self.is_x_coord_within_grid(x) and self.is_y_coord_within_grid(y)
+
+    def unset_obstacle_boundary_cells(self, removed_obstacle_cell):
         """When an obstacle cell is removed, unset the statuses of boundary
         cells around it.
 
@@ -267,15 +285,18 @@ class Grid(object):
         cells also belong to another obstacle. The best thing to do after unset
         all the boundary of removed obstacle cells is to set boundary for all
         the remaining obstacle cells."""
-        if cell.get_cell_status()  != CellStatus.EMPTY:
-            return
+        if self.is_obstacle_status(removed_obstacle_cell):
+            raise Exception("Attempted to remove boundary cells from an existing obstacle. Remove the obstacle before doing this!")
 
-        boundary_cells = self.get_boundary_cells_coords(cell)
+        boundary_cells = self.get_boundary_cells_coords(removed_obstacle_cell)
         # Unset status of cells around obstacle
-        for [x, y] in boundary_cells:
-            if 0 <= x <= 19 and 0 <= y <= 19 and \
-                    self.get_cell_by_xycoords(x, y).get_cell_status() == CellStatus.BOUNDARY:
-                self.get_cell_by_xycoords(x, y).set_empty_status()
+        for x, y in boundary_cells:
+            if not self.is_xy_coords_within_grid(x, y):
+                continue
+
+            removed_obstacle_cell = self.get_cell_by_xycoords(x, y)
+            if removed_obstacle_cell.get_cell_status() == CellStatus.BOUNDARY:
+                removed_obstacle_cell.set_empty_status()
 
     def set_obstacle_as_visited(self, obstacle_cell):
         obstacle_cell.set_obstacle_visited_status()

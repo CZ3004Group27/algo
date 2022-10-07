@@ -445,8 +445,9 @@ class AutoPlanner():
         else:
             # outside maze, check that manhattan distance to any obstacle is
             # above a certain threshold
-            for obs_x, obs_y in self.obs_coords:
-                raise NotImplementedError
+            if self.obs_coords:
+                for obs_x, obs_y in self.obs_coords:
+                    raise NotImplementedError
             return False
 
     def is_node_unreachable_from_parent(self, node: ImprovedNode) -> bool:
@@ -607,7 +608,7 @@ class AutoPlanner():
     def add_potential_goal_node(self, node: ImprovedNode=None):
         self.potential_goal_nodes.append(node)
 
-    def search_path(self, maze, cost, start, end, obs_coords: list):
+    def search_path(self, maze, cost, start, end, obs_coords: list=None):
         self.set_maze(maze)
         self.set_straight_cost(cost)
         # Create start and end node with initialized values for g, h and f
