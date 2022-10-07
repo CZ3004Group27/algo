@@ -31,6 +31,7 @@ class PathPlan(object):
         self.REPEATED_LAST_TARGET = 0
         self.IS_ON_PATH = False
         self.skipped_obstacles = []
+        self.skipped_images = []
         self.obstacle_key = None # the current obstacle key that RPi is going for
         self.num_move_completed_rpi = 0 # completed num moves by RPi to self.obstacle_key
         self.total_num_move_required_rpi = 0 # total required num moves by RPi to self.obstacle_key
@@ -43,6 +44,7 @@ class PathPlan(object):
 
         while len(self.fastest_route) != 0:
             count_of_obs += 1
+            print(f"count_of_obs = {count_of_obs}")
             target = self.fastest_route.pop(0)
             self.plan_full_path_to(target)
 
@@ -50,7 +52,8 @@ class PathPlan(object):
                 if constants.RPI_CONNECTED:
                     self.send_to_rpi()
 
-        self.restart_robot()
+        print("run restart robot in the main start_robot")
+        self.restart_robot("planning")
 
     def plan_full_path_to(self, target):
         """target is a list [x, y, dir, Cell] where Cell is the obstacle cell
@@ -103,13 +106,20 @@ class PathPlan(object):
     def skip_current_target(self):
         self.skipped_obstacles.append(self.target)
 
-    def restart_robot(self):
-        if len(self.skipped_obstacles) == 0:
-            print("No skipped obstacles to run")
+    def skip_current_image(self):
+        self.skipped_images.append(self.target)
+
+    def restart_robot(self, mode="planning"):
+        if mode=="planning":
+            skipped = self.skipped_obstacles
+        else: # mode=="imaging"
+            skipped = self.skipped_images
+        if len(skipped) == 0:
             return
 
-        while len(self.skipped_obstacles) != 0:
-            target = self.skipped_obstacles.pop(0)
+        print(f"there are {len(skipped)} remaining skipped {mode} obstacles")
+        while len(skipped) != 0:
+            target = skipped.pop(0)
             self.plan_full_path_to(target)
 
     def do_move(self, move):
@@ -1441,9 +1451,13 @@ class PathPlan(object):
 
     def send_to_rpi(self):
         if not self.obstacle_list_rpi:
-            # Call predict function on finish
-            self.simulator.predict_on_finish()
-            self.send_to_rpi_finish_task()
+            if not self.skipped_images:
+                # Call predict function on finish
+                self.simulator.predict_on_finish()
+                self.send_to_rpi_finish_task()
+            else:
+                print("Move to skipped obstacle to take more images")
+                self.restart_robot(mode="imaging")
             return
 
         self.obstacle_key = self.obstacle_list_rpi.pop(0)
