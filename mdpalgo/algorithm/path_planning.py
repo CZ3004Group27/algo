@@ -3,7 +3,7 @@ from mdpalgo.robot.robot import BorderException, CheckingException
 from mdpalgo.robot.robot import ObstacleException
 from mdpalgo.robot.robot import ObstacleTurnException
 from mdpalgo.robot.robot import Robot
-from mdpalgo.algorithm.fastest_path_planning import AutoPlanner, search
+from mdpalgo.algorithm.fastest_path_planning import AutoPlanner
 import numpy as np
 from mdpalgo import constants
 from mdpalgo.map.configuration import Pose
