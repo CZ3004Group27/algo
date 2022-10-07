@@ -96,7 +96,7 @@ class PathPlan(object):
                 self.target_pose.y,
                 self.target_pose.direction]  # ending position
         cost = 10  # cost per movement
-        maze = rotate_maze(self.grid.cells_virtual)
+        maze = rotate_maze(self.grid.get_virtual_map)
         search_result = self.auto_planner.search_path(maze, cost, start, end)
 
         return search_result
