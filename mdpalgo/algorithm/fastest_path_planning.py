@@ -106,15 +106,21 @@ class AutoPlanner():
         # in this list we will put all node that are yet_to_visit for exploration.
         # From here we will find the lowest cost node to expand next
         self.yet_to_visit = PriorityQueue()
+        # map all nodes that ever appear in yet to visit to its lowest g
+        self.yet_to_visit_lowest_cost = {}
 
     def initialize_visited_nodes(self):
         # we will put all node those already explored so that we
         # don't explore it again
-        # dictionary (x, y, dir) map
-        self.visited_list = set()
+        self.visited_list = set() # set of tuples (x, y, dir)
 
     def add_node_to_yet_to_visit(self, node: ImprovedNode):
         self.yet_to_visit.put((node.f, self.get_id(), node))
+        lowest_g = min(
+            self.yet_to_visit_lowest_cost.get(
+                node.pose.to_tuple(), np.infty),
+            node.g)
+        self.yet_to_visit_lowest_cost[node.pose.to_tuple()] = lowest_g
 
     def reset_id(self):
         # id for the node in the yet_to_visit_queue
@@ -256,10 +262,8 @@ class AutoPlanner():
     def is_node_higher_cost_than_yet_to_visit(self, node: ImprovedNode):
         """Check if node is already in yet to visit and has higher cost than
         stored in yet to visit"""
-        for item in self.yet_to_visit.queue:
-            node_in_yet_to_visit = item[self.node_index_in_yet_to_visit]
-            if node.pose == node_in_yet_to_visit.pose and node.g > node_in_yet_to_visit.g:
-                return True
+        if node.pose.to_tuple() in self.yet_to_visit_lowest_cost:
+            return node.g > self.yet_to_visit_lowest_cost[node.pose.to_tuple()]
         return False
 
     def set_straight_cost(self, cost):
