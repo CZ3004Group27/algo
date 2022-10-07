@@ -4,15 +4,8 @@ import numpy as np
 from mdpalgo import constants
 from mdpalgo.map.cell import CellStatus
 from mdpalgo.map.configuration import Pose
-from enum import Enum
+from mdpalgo.robot.robot import RobotMovement
 
-class RobotMovement(Enum):
-    FORWARD = "F"
-    BACKWARD = "B"
-    FORWARD_RIGHT = "FR"
-    FORWARD_LEFT = "FL"
-    BACKWARD_RIGHT = "BR"
-    BACKWARD_LEFT = "BL"
 class ImprovedNode:
     """
         A node class for A* Pathfinding
@@ -35,14 +28,15 @@ class ImprovedNode:
 
 class AutoPlanner():
     def __init__(self):
+        self.TURNING_RADIUS = 3
         # map movement to a relative vector wrt the current direction
         self.map_move_to_relative_displacement =  {
             RobotMovement.FORWARD: [0, 1],
             RobotMovement.BACKWARD: [0, -1],
-            RobotMovement.FORWARD_RIGHT: [3, 3],
-            RobotMovement.FORWARD_LEFT: [-3, 3],
-            RobotMovement.BACKWARD_RIGHT: [3, -3],
-            RobotMovement.BACKWARD_LEFT: [-3, -3],
+            RobotMovement.FORWARD_RIGHT: [self.TURNING_RADIUS, self.TURNING_RADIUS],
+            RobotMovement.FORWARD_LEFT: [-self.TURNING_RADIUS, self.TURNING_RADIUS],
+            RobotMovement.BACKWARD_RIGHT: [self.TURNING_RADIUS, -self.TURNING_RADIUS],
+            RobotMovement.BACKWARD_LEFT: [-self.TURNING_RADIUS, -self.TURNING_RADIUS],
         }
         self.map_move_to_relative_direction = {
             RobotMovement.FORWARD: constants.NORTH,
@@ -166,7 +160,7 @@ class AutoPlanner():
 
         # for turning move, also check the corner of the move
         if move in self.turning_moves:
-            unit_forward_vector = self.direction_to_unit_forward_vector[node.parent.pose.direction]
+            unit_forward_vector = self.direction_to_unit_forward_vector[parent_node.pose.direction]
             corner_displacement = np.matmul(unit_forward_vector, displacement_from_current) * unit_forward_vector
             corner_node = ImprovedNode(None, [corner_displacement[0] + parent_node.pose.x,
                                               corner_displacement[1] + parent_node.pose.y,
@@ -188,7 +182,7 @@ class AutoPlanner():
 
     def set_boundary_for_nodes(self):
         """The node can be slightly outside of the maze"""
-        self.buffer = -1
+        self.buffer = constants.BOUNDARY_BUFFER
         self.right_boundary = self.size_x - 1 - self.buffer # right most node that robot is not out of maze
         self.top_boundary = self.size_y - 1 - self.buffer # top most node that robot is not out of maze
 
@@ -312,7 +306,7 @@ class AutoPlanner():
     def add_potential_goal_node(self, node: ImprovedNode=None):
         self.potential_goal_nodes.append(node)
 
-    def search_path(self, maze, cost, start, end, obs_coords: list=None):
+    def get_movements_and_path_to_goal(self, maze, cost, start, end, obs_coords: list=None):
         self.set_maze(maze)
         self.set_straight_cost(cost)
         # Create start and end node with initialized values for g, h and f
@@ -353,7 +347,7 @@ class AutoPlanner():
 
             # test if goal is reached or not, if yes then return the path
             if self.is_goal_reached():
-                return self.reconstruct_path(self.current_node)
+                return self.reconstruct_movements_and_path(self.current_node)
 
             self.get_children_of_current_node()
 
@@ -378,19 +372,60 @@ class AutoPlanner():
 
                 # Add the child to the yet_to_visit list
                 self.add_node_to_yet_to_visit(child)
-        return None
+        raise Exception("no path found to goal")
 
-    def reconstruct_path(self, current_node: ImprovedNode) -> list:
+    def reconstruct_movements_and_path(self, current_node: ImprovedNode) -> list:
         """Return a list of string of movements"""
         node = current_node
+        movements = []
         path = []
 
         while node.pose != self.start_node.pose:
             # grow the path backwards and backtrack
-            path.append(node.move_from_parent.value)
+            movements.append(node.move_from_parent)
+            path.append(self.get_path_from_parent(node))
             node = node.parent
 
-        path.reverse()                 # reverse the path from start to goal
+        movements.reverse()                 # reverse the path from start to goal
+        path.reverse()
+        return movements, path
+
+    def get_path_from_parent(self, node) -> list:
+        parent_node = node.parent
+        move = node.move_from_parent
+        displacement_from_parent = node.displacement_from_parent
+        path = []
+
+        # for turning move, also check the corner of the move
+        if move in self.turning_moves:
+            unit_forward_vector = self.direction_to_unit_forward_vector[parent_node.pose.direction]
+            straight_displacement = np.matmul(unit_forward_vector, displacement_from_parent) * unit_forward_vector
+            unit_straight_vector = (straight_displacement/self.TURNING_RADIUS).astype(int)
+
+            corner_x = straight_displacement[0] + parent_node.pose.x
+            corner_y = straight_displacement[1] + parent_node.pose.y
+
+            sideward_displacement = displacement_from_parent - straight_displacement
+            unit_sideward_vector = (sideward_displacement/self.TURNING_RADIUS).astype(int)
+
+            # add the path to the corner of the turn
+            for i in range(1, self.TURNING_RADIUS + 1):
+                path.append(
+                [
+                    parent_node.pose.x + i * unit_straight_vector[0],
+                    parent_node.pose.y + i * unit_straight_vector[1],
+                ])
+
+            # add the path from the corner to the end of the turn
+            for i in range(1, self.TURNING_RADIUS + 1):
+                path.append(
+                [
+                    corner_x + i * unit_sideward_vector[0],
+                    corner_y + i * unit_sideward_vector[1],
+                ])
+
+        else: # straight moves are straight forward
+            path.append([node.pose.x, node.pose.y])
         return path
 
 
@@ -420,9 +455,9 @@ if __name__ == "__main__":
     auto_planner.get_children_of_current_node()
     for node in auto_planner.children_current_node:
         print(f"Child: (x, y, dir) = ({node.pose.x}, {node.pose.y}, {node.pose.direction})")
-    search_result = auto_planner.search_path(maze, cost, start, end)
-    print(search_result)
-    assert search_result == ['F', 'F', 'F', 'BR', 'B', 'B', 'FR']
+    movements = auto_planner.get_movements_and_path_to_goal(maze, cost, start, end)[0]
+    print(movements)
+    assert movements == ['F', 'F', 'F', 'BR', 'B', 'B', 'FR']
 
     # test the transformation methods
     relative_vector = auto_planner.map_move_to_relative_displacement[RobotMovement.FORWARD]

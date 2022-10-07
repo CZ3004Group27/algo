@@ -23,6 +23,7 @@ ROBOT_STARTING_X = 1
 ROBOT_STARTING_Y = 1
 ROBOT_STARTING_ANGLE = NORTH
 BUFFER = 3  # This is the front/back buffer of grids for turning obstacle detection
+BOUNDARY_BUFFER = -1 # this is the buffer from the boundary of the maze. negative values mean the cell representing the robot can move outside of the maze
 
 # Grid
 # if (120 < pos[0] < 560) and (120 < pos[1] < 560): to define area within grid
