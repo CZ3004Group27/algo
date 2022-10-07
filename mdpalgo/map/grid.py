@@ -309,55 +309,23 @@ class Grid(object):
             for column in range(20):
                 cell = self.get_cell_by_row_column(row, column)
                 color = COLOR_DICT[cell.get_cell_status()]
-                pygame.draw.rect(screen,
-                                 color,
-                                 [OUTER_MARGIN + (MARGIN + self.block_size) * column + MARGIN,
-                                  OUTER_MARGIN + (MARGIN + self.block_size) * row + MARGIN,
-                                  self.block_size,
-                                  self.block_size])
+                cell_surface = pygame.Surface((self.block_size, self.block_size))
+                cell_surface.fill(color)
 
-                obstacle_direction = cell.get_obstacle_direction()
-                if obstacle_direction is None:
-                    continue
-                elif obstacle_direction == constants.NORTH:
-                    pygame.draw.rect(screen,
-                                     constants.RED,
-                                     [OUTER_MARGIN + (MARGIN + self.block_size) * column + MARGIN,
-                                      OUTER_MARGIN + (MARGIN + self.block_size) * row + MARGIN,
-                                      self.block_size,
-                                      # 2
-                                      8  # change width of obstacle image line
-                                      ])
-                elif obstacle_direction == constants.EAST:
-                    pygame.draw.rect(screen,
-                                     constants.RED,
-                                     [
-                                         # OUTER_MARGIN + (MARGIN + self.block_size) * column + MARGIN + 18,
-                                         # change starting point of obstacle image line
-                                         OUTER_MARGIN + (MARGIN + self.block_size) * column + MARGIN + 13,
-                                         OUTER_MARGIN + (MARGIN + self.block_size) * row + MARGIN,
-                                         # 2,
-                                         8,  # change width of obstacle image line
-                                         self.block_size])
-                elif obstacle_direction == constants.SOUTH:
-                    pygame.draw.rect(screen,
-                                     constants.RED,
-                                     [OUTER_MARGIN + (MARGIN + self.block_size) * column + MARGIN,
-                                      # OUTER_MARGIN + (MARGIN + self.block_size) * row + MARGIN + 18,
-                                      # change starting point of obstacle image line
-                                      OUTER_MARGIN + (MARGIN + self.block_size) * row + MARGIN + 13,
-                                      self.block_size,
-                                      # 2
-                                      8  # change width of obstacle image line
-                                      ])
-                elif obstacle_direction == constants.WEST:
-                    pygame.draw.rect(screen,
-                                     constants.RED,
-                                     [OUTER_MARGIN + (MARGIN + self.block_size) * column + MARGIN,
-                                      OUTER_MARGIN + (MARGIN + self.block_size) * row + MARGIN,
-                                      # 2,
-                                      8,  # change width of obstacle image line
-                                      self.block_size])
+                if self.is_obstacle_status(cell.get_cell_status()):
+                    # display obstacle direction with a red bar
+                    obstacle_direction = cell.get_obstacle_direction()
+                    pygame.draw.rect(
+                        cell_surface,
+                        constants.RED,
+                        pygame.Rect(0, 0, self.block_size, 8))
+                    cell_surface = pygame.transform.rotate(cell_surface, obstacle_direction)
+
+                screen.blit(cell_surface,
+                    (
+                        OUTER_MARGIN + (MARGIN + self.block_size) * column + MARGIN,
+                        OUTER_MARGIN + (MARGIN + self.block_size) * row + MARGIN,
+                    ))
 
     def grid_to_pixel(self, pos):
         x_pixel = (pos[0]) * (self.block_size + MARGIN) + 120 + (self.block_size + MARGIN) / 2
