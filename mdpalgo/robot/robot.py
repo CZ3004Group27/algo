@@ -3,7 +3,6 @@ from math import degrees
 from pygame.math import Vector2
 from mdpalgo import constants
 import pygame
-from mdpalgo.constants import BUFFER
 from mdpalgo.map.configuration import Pose
 from mdpalgo.map.grid import Grid
 from enum import Enum

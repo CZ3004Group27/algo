@@ -17,14 +17,10 @@ parser.add_argument("--testwifi", help="use test wifi server on PC instead of re
 
 def main():
     constants.HEADLESS = False
-    constants.CENTER_ON_OBS = False
     args = parser.parse_args()
     if args.hl:
         constants.HEADLESS = True
         print("Running in headless mode")
-    if args.cen:
-        constants.CENTER_ON_OBS = True
-        print("Pathing will center on obstacle")
     if args.testwifi:
         constants.WIFI_IP = constants.TEST_IP
         print("Use local IP address for integration testing without RPi")

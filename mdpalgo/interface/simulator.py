@@ -130,13 +130,14 @@ class Simulator:
                         else:  # otherwise, area clicked is outside of grid
                             self.check_button_clicked(pos)
 
-                # Limit to 20 frames per second
                 now = pygame.time.get_ticks() / 1000
                 if now - self.startTime > 1 / constants.FPS:
                     self.startTime = now
                     self.root.display.flip()
 
-        # Be IDLE friendly. If you forget this line, the program will 'hang' on exit.
+        # Be IDLE friendly. If you forget this line, the program will 'hang' on
+        # exit.
+        print("closing")
         self.root.quit()
 
     def is_pos_clicked_within_grid(self, pos):
