@@ -5,6 +5,7 @@ from mdpalgo import constants
 import pygame
 from mdpalgo.constants import BUFFER
 from mdpalgo.map.configuration import Pose
+from mdpalgo.map.grid import Grid
 from enum import Enum
 
 # This sets the margin between each Cell
@@ -12,24 +13,6 @@ MARGIN = 2
 ONE_CELL = 20 + MARGIN
 THREE_CELL = 3 * ONE_CELL
 dt = 0.2     # Max without messing up is 0.8
-
-
-# dt = round(self.clock.get_time() / 1000, 2)
-
-class BorderException(Exception):
-    pass
-
-
-class ObstacleException(Exception):
-    pass
-
-
-class ObstacleTurnException(Exception):
-    pass
-
-class CheckingException(Exception):
-    pass
-
 class RobotMovement(Enum):
     FORWARD = "F"
     BACKWARD = "B"
@@ -40,7 +23,7 @@ class RobotMovement(Enum):
 
 class Robot(object):
 
-    def __init__(self, simulator, screen, grid, grid_surface, robot_w, robot_h, grid_x, grid_y, angle, car_image):
+    def __init__(self, simulator, screen, grid: Grid, robot_w, robot_h, grid_x, grid_y, angle, car_image):
         self.robot_w = robot_w
         self.robot_h = robot_h
         # actual pixel width and height of robot (inclusive of margin)
@@ -52,16 +35,12 @@ class Robot(object):
         self.simulator = simulator
         self.screen = screen
         self.grid = grid
-        self.grid_surface = grid_surface
         # the position of the middle of the car with respect to the grid
-        self.pixel_pos = Vector2(self.grid.grid_to_pixel([self.grid_x, self.grid_y])[0],
-                                 self.grid.grid_to_pixel([self.grid_x, self.grid_y])[1])
-        # self.pixel_pos = Vector2(grid.grid_to_pixel([1,1])[0],grid.grid_to_pixel([1,1])[1])
+        self.pixel_pos = Vector2(self.grid.grid_to_pixel([self.grid_x, self.grid_y]))
         self.angle = angle
         self.car_image = car_image
-        self.car_rect = pygame.Rect(self.pixel_pos[0] - (0.5 * self.screen_width),
-                                    self.pixel_pos[1] - (0.5 * self.screen_height),
-                                    self.screen_width, self.screen_height)
+        self.car_rect: pygame.Rect
+        self.update_car_rect()
 
         self.speed = 10
         self.velocity = Vector2(0.0, 0.0)
@@ -88,7 +67,6 @@ class Robot(object):
         rect = rotated.get_rect()
         rect.center = self.car_rect.center
         self.screen.blit(rotated, rect)
-        # screen.blit(rotated, self.get_pixel_pos() - (rect.width / 2, rect.height / 2))
         pygame.draw.rect(self.screen, constants.RED, self.car_rect, 1)
 
         # Refresh screen by frame rate
@@ -97,18 +75,21 @@ class Robot(object):
             self.simulator.startTime = now
             self.simulator.root.display.flip()
 
-    def redraw_car(self):
+    def redraw_car_refresh_screen(self):
         if constants.HEADLESS:
             return
         # Need to redraw over everything (grid_surface, grid and car)
         self.simulator.reprint_screen_and_buttons()
-        self.screen.blit(self.grid_surface, (120, 120))
-        self.grid.update_grid(self.screen)
+        self.simulator.redraw_grid()
+        self.update_car_rect()
         self.draw_car()
 
+    def update_car_rect(self):
+        self.car_rect = pygame.Rect(self.pixel_pos[0] - (0.5 * self.screen_width),
+                                    self.pixel_pos[1] - (0.5 * self.screen_height),
+                                    self.screen_width, self.screen_height)
+
     def check_movement_complete(self, final_pixel_pos):
-        if constants.IS_CHECKING:
-            return True
         return abs(self.get_pixel_pos()[0] - final_pixel_pos[0]) < 4 and abs(
             self.get_pixel_pos()[1] - final_pixel_pos[1]) < 4
 
@@ -128,6 +109,13 @@ class Robot(object):
         else:
             raise NotImplementedError(f"Robot is not implemented to perform {move} yet")
 
+    def reset_velocity(self):
+        self.velocity = Vector2(0.0, 0.0)
+
+    def set_velocity(self, vx, vy):
+        self.velocity[0] = vx
+        self.velocity[1] = vy
+
     # TODO: define possible movements (for turning motions picture steering wheel direction)
     # ALL MOTIONS take place in minimal unit.
     # for 1: is by 10 (one grid)
@@ -138,7 +126,6 @@ class Robot(object):
     # 4. backward right/anticlockwise pi/2 turn
     # 5. backward left/clockwise pi/2 turn
     def move_forward(self):
-        # print("MOVE FORWARD FACING", self.angle)
         initial_pixel_pos = self.get_pixel_pos()
         # Set position to stop moving
         if self.angle == constants.NORTH:  # CAR FACING NORTH
@@ -153,26 +140,15 @@ class Robot(object):
             final_pixel_pos = initial_pixel_pos  # car will not move
         final_angle = self.angle
 
-        if self.check_within_border(final_pixel_pos) and self.check_exclude_obstacles_straight(final_pixel_pos):
-            # Set velocity of car
-            self.velocity += (0, -self.speed)
-            while not self.check_movement_complete(final_pixel_pos):
-                if constants.HEADLESS:
-                    break
-                self.pixel_pos += self.velocity.rotate(-self.angle) * dt
-                self.car_rect = pygame.Rect(self.pixel_pos[0] - (0.5 * self.screen_width),
-                                            self.pixel_pos[1] - (0.5 * self.screen_height),
-                                            self.screen_width, self.screen_height)
-                self.redraw_car()
+        self.set_velocity(0, -self.speed)
+        while not self.check_movement_complete(final_pixel_pos):
+            if constants.HEADLESS:
+                break
+            self.pixel_pos += self.velocity.rotate(-self.angle) * dt
+            self.redraw_car_refresh_screen()
 
-            # Reset velocity to 0
-            self.velocity -= (0, -self.speed)
-            self.correct_coords_and_angle(final_angle, final_pixel_pos)
-
-            self.check_if_target_reached(final_pixel_pos, final_angle)
-            return True
-        else:
-            return False
+        self.reset_velocity()
+        self.update_robot(final_angle, final_pixel_pos)
 
     def move_backward(self):
         # print("MOVE BACKWARD FACING", self.angle)
@@ -190,31 +166,19 @@ class Robot(object):
             final_pixel_pos = initial_pixel_pos  # car will not move
         final_angle = self.angle
 
-        if self.check_within_border(final_pixel_pos) and self.check_exclude_obstacles_straight(final_pixel_pos):
-            # Set velocity of car
-            self.velocity += (0, self.speed)
-            while not self.check_movement_complete(final_pixel_pos):
-                if constants.HEADLESS:
-                    break
-                self.pixel_pos += self.velocity.rotate(-self.angle) * dt
-                self.car_rect = pygame.Rect(self.pixel_pos[0] - (0.5 * self.screen_width),
-                                            self.pixel_pos[1] - (0.5 * self.screen_height),
-                                            self.screen_width, self.screen_height)
-                self.redraw_car()
-            # Reset velocity to 0
-            self.velocity -= (0, self.speed)
-            self.correct_coords_and_angle(final_angle, final_pixel_pos)
+        self.set_velocity(0, self.speed)
+        while not self.check_movement_complete(final_pixel_pos):
+            if constants.HEADLESS:
+                break
+            self.pixel_pos += self.velocity.rotate(-self.angle) * dt
+            self.redraw_car_refresh_screen()
 
-            self.check_if_target_reached(final_pixel_pos, final_angle)
-            return True
-        else:
-            return False
+        self.reset_velocity()
+        self.update_robot(final_angle, final_pixel_pos)
+
+        return True
 
     def move_forward_steer_right(self):
-        # print("STEERING RIGHT FORWARD FACING", self.angle)
-        # Pause to simulate time taken for wheels to full rotate
-        # time.sleep(constants.STEERING_TIME_DELAY)
-
         initial_pixel_pos = self.get_pixel_pos()
         initial_angle = self.angle
         # Set position to stop moving
@@ -234,40 +198,21 @@ class Robot(object):
             final_pixel_pos = initial_pixel_pos  # car will not move
             final_angle = initial_angle
 
-        if self.check_within_border(final_pixel_pos) and self.check_exclude_obstacles(final_pixel_pos, "FORWARD_R"):
-            # Pause to simulate time taken for wheels to full rotate
-            # time.sleep(constants.STEERING_TIME_DELAY)
+        self.set_velocity(0, -self.speed)
+        while not self.check_if_turned(initial_angle, final_pixel_pos):
+            if constants.HEADLESS:
+                break
+            turning_radius = THREE_CELL
+            angular_velocity = self.velocity.y / turning_radius
 
-            # Set velocity of car
-            self.velocity += (0, -self.speed)
-            while not self.check_if_turned(initial_angle, final_pixel_pos):
-                if constants.HEADLESS:
-                    break
-                turning_radius = THREE_CELL
-                angular_velocity = self.velocity.y / turning_radius
+            self.pixel_pos += self.velocity.rotate(-self.angle) * dt
+            self.angle += degrees(angular_velocity) * dt
+            self.redraw_car_refresh_screen()
 
-                self.pixel_pos += self.velocity.rotate(-self.angle) * dt
-                self.angle += degrees(angular_velocity) * dt
-
-                self.car_rect = pygame.Rect(self.pixel_pos[0] - (0.5 * self.screen_width),
-                                            self.pixel_pos[1] - (0.5 * self.screen_height),
-                                            self.screen_width, self.screen_height)
-                self.redraw_car()
-
-            # Reset velocity to 0 and do corrections for angle and coordinates
-            self.velocity -= (0, -self.speed)
-            self.correct_coords_and_angle(final_angle, final_pixel_pos)
-
-            self.check_if_target_reached(final_pixel_pos, final_angle)
-            return True
-        else:
-            return False
+        self.reset_velocity()
+        self.update_robot(final_angle, final_pixel_pos)
 
     def move_forward_steer_left(self):
-        # print("STEERING LEFT FORWARD FACING", self.angle)
-        # Pause to simulate time taken for wheels to full rotate
-        # time.sleep(constants.STEERING_TIME_DELAY)
-
         initial_pixel_pos = self.get_pixel_pos()
         initial_angle = self.angle
         # Set position to stop moving
@@ -287,40 +232,24 @@ class Robot(object):
             final_pixel_pos = initial_pixel_pos  # car will not move
             final_angle = initial_angle
 
-        if self.check_within_border(final_pixel_pos) and self.check_exclude_obstacles(final_pixel_pos, "FORWARD_L"):
-            # Pause to simulate time taken for wheels to full rotate
-            # time.sleep(constants.STEERING_TIME_DELAY)
+        # Set velocity of car
+        self.set_velocity(0, -self.speed)
+        while not self.check_if_turned(initial_angle, final_pixel_pos):
+            if constants.HEADLESS:
+                break
+            turning_radius = THREE_CELL
+            angular_velocity = self.velocity.y / turning_radius
 
-            # Set velocity of car
-            self.velocity += (0, -self.speed)
-            while not self.check_if_turned(initial_angle, final_pixel_pos):
-                if constants.HEADLESS:
-                    break
-                turning_radius = THREE_CELL
-                angular_velocity = self.velocity.y / turning_radius
+            self.pixel_pos += self.velocity.rotate(-self.angle) * dt
+            self.angle -= degrees(angular_velocity) * dt
+            self.redraw_car_refresh_screen()
 
-                self.pixel_pos += self.velocity.rotate(-self.angle) * dt
-                self.angle -= degrees(angular_velocity) * dt
+        self.reset_velocity()
+        self.update_robot(final_angle, final_pixel_pos)
 
-                self.car_rect = pygame.Rect(self.pixel_pos[0] - (0.5 * self.screen_width),
-                                            self.pixel_pos[1] - (0.5 * self.screen_height),
-                                            self.screen_width, self.screen_height)
-                self.redraw_car()
-
-            # Reset velocity to 0 and do corrections for angle and coordinates
-            self.velocity -= (0, -self.speed)
-            self.correct_coords_and_angle(final_angle, final_pixel_pos)
-
-            self.check_if_target_reached(final_pixel_pos, final_angle)
-            return True
-        else:
-            return False
+        return True
 
     def move_backward_steer_right(self):
-        # print("STEERING RIGHT BACKWARD FACING", self.angle)
-        # Pause to simulate time taken for wheels to full rotate
-        # time.sleep(constants.STEERING_TIME_DELAY)
-
         initial_pixel_pos = self.get_pixel_pos()
         initial_angle = self.angle
         # Set position to stop moving
@@ -340,38 +269,23 @@ class Robot(object):
             final_pixel_pos = initial_pixel_pos  # car will not move
             final_angle = initial_angle
 
-        if self.check_within_border(final_pixel_pos) and self.check_exclude_obstacles(final_pixel_pos, "BACKWARD_R"):
-            # Pause to simulate time taken for wheels to full rotate
-            # time.sleep(constants.STEERING_TIME_DELAY)
+        self.set_velocity(0, -self.speed)
+        while not self.check_if_turned(initial_angle, final_pixel_pos):
+            if constants.HEADLESS:
+                break
+            turning_radius = THREE_CELL
+            angular_velocity = self.velocity.y / turning_radius
 
-            # Set velocity of car
-            self.velocity += (0, -self.speed)
-            while not self.check_if_turned(initial_angle, final_pixel_pos):
-                if constants.HEADLESS:
-                    break
-                turning_radius = THREE_CELL
-                angular_velocity = self.velocity.y / turning_radius
+            self.pixel_pos -= self.velocity.rotate(-self.angle) * dt
+            self.angle -= degrees(angular_velocity) * dt
+            self.redraw_car_refresh_screen()
 
-                self.pixel_pos -= self.velocity.rotate(-self.angle) * dt
-                self.angle -= degrees(angular_velocity) * dt
+        self.reset_velocity()
+        self.update_robot(final_angle, final_pixel_pos)
 
-                self.car_rect = pygame.Rect(self.pixel_pos[0] - (0.5 * self.screen_width),
-                                            self.pixel_pos[1] - (0.5 * self.screen_height),
-                                            self.screen_width, self.screen_height)
-                self.redraw_car()
-
-            # Reset velocity to 0 and do corrections for angle and coordinates
-            self.velocity -= (0, -self.speed)
-            self.correct_coords_and_angle(final_angle, final_pixel_pos)
-
-            self.check_if_target_reached(final_pixel_pos, final_angle)
-            return True
-        else:
-            return False
+        return True
 
     def move_backward_steer_left(self):
-        # print("STEERING LEFT BACKWARD FACING", self.angle)
-
         initial_pixel_pos = self.get_pixel_pos()
         initial_angle = self.angle
         # Set position to stop moving
@@ -391,218 +305,37 @@ class Robot(object):
             final_pixel_pos = initial_pixel_pos  # car will not move
             final_angle = initial_angle
 
-        if self.check_within_border(final_pixel_pos) and self.check_exclude_obstacles(final_pixel_pos, "BACKWARD_L"):
-            # Pause to simulate time taken for wheels to full rotate
-            # time.sleep(constants.STEERING_TIME_DELAY)
+        self.set_velocity(0, -self.speed)
+        while not self.check_if_turned(initial_angle, final_pixel_pos):
+            if constants.HEADLESS:
+                break
+            turning_radius = THREE_CELL
+            angular_velocity = self.velocity.y / turning_radius
 
-            # Set velocity of car
-            self.velocity += (0, -self.speed)
-            while not self.check_if_turned(initial_angle, final_pixel_pos):
-                if constants.HEADLESS:
-                    break
-                turning_radius = THREE_CELL
-                angular_velocity = self.velocity.y / turning_radius
+            self.pixel_pos -= self.velocity.rotate(-self.angle) * dt
+            self.angle += degrees(angular_velocity) * dt
+            self.redraw_car_refresh_screen()
 
-                self.pixel_pos -= self.velocity.rotate(-self.angle) * dt
-                self.angle += degrees(angular_velocity) * dt
+        self.reset_velocity()
+        self.update_robot(final_angle, final_pixel_pos)
 
-                self.car_rect = pygame.Rect(self.pixel_pos[0] - (0.5 * self.screen_width),
-                                            self.pixel_pos[1] - (0.5 * self.screen_height),
-                                            self.screen_width, self.screen_height)
-                self.redraw_car()
+        return True
 
-            # Reset velocity to 0 and do corrections for angle and coordinates
-            self.velocity -= (0, -self.speed)
-            self.correct_coords_and_angle(final_angle, final_pixel_pos)
-
-            self.check_if_target_reached(final_pixel_pos, final_angle)
-            return True
-        else:
-            return False
-
-    def update_robot(self, arglist):
-        final_angle = arglist[0]
-        final_pixel_pos = arglist[1]
+    def update_robot(self, final_angle, final_pixel_pos):
         self.angle = final_angle
         self.pixel_pos = final_pixel_pos
-        self.grid_x = int(self.grid.pixel_to_grid(final_pixel_pos)[0])
-        self.grid_y = int(self.grid.pixel_to_grid(final_pixel_pos)[1])
-        self.car_rect = pygame.Rect(self.pixel_pos[0] - (0.5 * self.screen_width),
-                                    self.pixel_pos[1] - (0.5 * self.screen_height),
-                                    self.screen_width, self.screen_height)
-
-    def correct_coords_and_angle(self, final_angle, final_pixel_pos):
-        self.update_robot([final_angle, final_pixel_pos])
-        if constants.IS_CHECKING:
-            return
-        self.redraw_car()
-
+        self.grid_x, self.grid_y = self.grid.pixel_to_grid(self.pixel_pos)
+        self.redraw_car_refresh_screen()
 
     def check_if_turned(self, initial_angle, final_pixel_pos):
-        if constants.IS_CHECKING:
-            return True
         # Set position to stop moving
         return self.check_movement_complete(final_pixel_pos) and abs(self.angle - initial_angle) > 80
-
-    # TODO: it is possible for robot to move outside of border for now (to meet some of the limitations of path planning
-    def check_within_border(self, pos):
-        if (constants.min_pixel_pos_x + self.robot_w < pos[0] < constants.max_pixel_pos_x - self.robot_w) \
-                and (constants.min_pixel_pos_y + self.robot_h < pos[1] < constants.max_pixel_pos_y - self.robot_h):
-            return True
-        if not constants.IS_CHECKING:
-            #raise BorderException("BORDER")
-            pass
-        else:
-            raise CheckingException("CHECK-FAIL")
-            pass
-        return True
-        #return False
-
-    # TODO: for now, it is strictly right in front of the image, 4 grids away (counting from the centre of car)
-    def check_if_target_reached(self, final_pixel_pos, final_angle):
-        target_locations = self.optimized_target_locations
-        for target_loc in target_locations:
-            target_grid_x = target_loc[0]
-            target_grid_y = target_loc[1]
-            target_direction = target_loc[2]
-
-            final_grid_pos = self.grid.pixel_to_grid(final_pixel_pos)
-            final_grid_x = final_grid_pos[0]
-            final_grid_y = final_grid_pos[1]
-            # print("Checking for obstacles visited:", target_loc)
-
-            if not constants.IS_CHECKING:
-                # Check if in target grid
-                if (final_grid_x == target_grid_x) and (final_grid_y == target_grid_y) and (
-                        final_angle == target_direction):
-
-                    # Repaint grid and car
-                    self.redraw_car()
-                    print("--Obstacle was visited!")
-
-    # def get_cells_occupied_by_car(self):
-    #     cells = [self.grid.get_cell_by_xycoords(self.grid_x - 1, self.grid_y - 1),
-    #              self.grid.get_cell_by_xycoords(self.grid_x - 1, self.grid_y),
-    #              self.grid.get_cell_by_xycoords(self.grid_x - 1, self.grid_y + 1),
-    #              self.grid.get_cell_by_xycoords(self.grid_x, self.grid_y - 1),
-    #              self.grid.get_cell_by_xycoords(self.grid_x, self.grid_y),
-    #              self.grid.get_cell_by_xycoords(self.grid_x, self.grid_y + 1),
-    #              self.grid.get_cell_by_xycoords(self.grid_x - 1, self.grid_y - 1),
-    #              self.grid.get_cell_by_xycoords(self.grid_x - 1, self.grid_y),
-    #              self.grid.get_cell_by_xycoords(self.grid_x - 1, self.grid_y) + 1]
-    #     return cells
-
-    def check_exclude_obstacles_straight(self, final_pixel_pos):
-        for obstacle_id in self.grid.get_obstacle_cells():
-            obstacle_grid_coord = obstacle_id.split("-")
-            obstacle_grid_x, obstacle_grid_y = int(obstacle_grid_coord[0]), int(obstacle_grid_coord[1])
-            obstacle_grid_coord = [obstacle_grid_x, obstacle_grid_y]
-
-            # Using pixel position
-            obstacle_pixel_x, obstacle_pixel_y = self.grid.grid_to_pixel(obstacle_grid_coord)[0], \
-                                                 self.grid.grid_to_pixel(obstacle_grid_coord)[1]
-            border_pixel_length = (self.grid.block_size + MARGIN) * 3  # about 3 squares border
-            if (obstacle_pixel_x - border_pixel_length < final_pixel_pos[0] < obstacle_pixel_x + border_pixel_length) \
-                    and (obstacle_pixel_y - border_pixel_length < final_pixel_pos[
-                1] < obstacle_pixel_y + border_pixel_length):
-                if not constants.IS_CHECKING:
-                    #raise ObstacleException("OBSTACLE")
-                    pass
-                else:
-                    raise CheckingException("CHECK-FAIL")
-                    pass
-                return True
-                # return False
-
-            # Using grid position
-            # grid_coord = self.grid.pixel_to_grid(final_pixel_pos)
-            # grid_x, grid_y = grid_coord[0], grid_coord[1]
-            # if (obstacle_grid_x - 3 <= grid_x <= obstacle_grid_x + 3) \
-            #         and (obstacle_grid_y - 3 <= grid_y <= obstacle_grid_y + 3):   # about 3 squares
-            #     print("OBSTACLE!!")
-            #     return False
-
-        return True
-
-    # NOTE (it's basically checking the 3x3 grid in front/behind the robot to see if its obstacle free and can turn)
-    def check_turning_radius(self, turn):
-        # Since movement is a turn, create a wider obstacle barrier to account for turning
-        # initial position + 3~ grids (according to direction of turn)
-        initial_grid_x, initial_grid_y, initial_angle = self.grid_x, self.grid_y, self.angle
-        grid_x, grid_y = initial_grid_x, initial_grid_y
-        if initial_angle == constants.NORTH:
-            if turn == "FORWARD_R" or turn == "FORWARD_L":
-                # + 3y
-                grid_x, grid_y = grid_x, grid_y + BUFFER
-            elif turn == "BACKWARD_R" or turn == "BACKWARD_L":
-                # - 3y
-                grid_x, grid_y = grid_x, grid_y - BUFFER
-        elif initial_angle == constants.SOUTH:
-            if turn == "FORWARD_R" or turn == "FORWARD_L":
-                # - 3y
-                grid_x, grid_y = grid_x, grid_y - BUFFER
-            elif turn == "BACKWARD_R" or turn == "BACKWARD_L":
-                # + 3y
-                grid_x, grid_y = grid_x, grid_y + BUFFER
-        elif initial_angle == constants.EAST:
-            if turn == "FORWARD_R" or turn == "FORWARD_L":
-                # + 3x
-                grid_x, grid_y = grid_x + BUFFER, grid_y
-            elif turn == "BACKWARD_R" or turn == "BACKWARD_L":
-                # - 3x
-                grid_x, grid_y = grid_x - BUFFER, grid_y
-        elif initial_angle == constants.WEST:
-            if turn == "FORWARD_R" or turn == "FORWARD_L":
-                # - 3x
-                grid_x, grid_y = grid_x - BUFFER, grid_y
-            elif turn == "BACKWARD_R" or turn == "BACKWARD_L":
-                # + 3x
-                grid_x, grid_y = grid_x + BUFFER, grid_y
-
-        for obstacle_id in self.grid.get_obstacle_cells():
-            obstacle_grid_coord = obstacle_id.split("-")
-            obstacle_grid_x, obstacle_grid_y = int(obstacle_grid_coord[0]), int(obstacle_grid_coord[1])
-            obstacle_grid_coord = [obstacle_grid_x, obstacle_grid_y]
-
-            # Using pixel position
-            obstacle_pixel_x, obstacle_pixel_y = self.grid.grid_to_pixel(obstacle_grid_coord)[0], \
-                                                 self.grid.grid_to_pixel(obstacle_grid_coord)[1]
-            turning_pixel = self.grid.grid_to_pixel((grid_x, grid_y))
-            border_pixel_length = (self.grid.block_size + MARGIN) * 3  # about 3 squares border
-            if (obstacle_pixel_x - border_pixel_length < turning_pixel[0] < obstacle_pixel_x + border_pixel_length) \
-                    and (
-                    obstacle_pixel_y - border_pixel_length < turning_pixel[1] < obstacle_pixel_y + border_pixel_length):
-                if not constants.IS_CHECKING:
-                    #raise ObstacleTurnException("OBSTACLE_TURN")
-                    pass
-                else:
-                    raise CheckingException("CHECK-FAIL")
-                return True
-                # return False
-
-            # Using grid position
-            # if (obstacle_grid_x - 3 <= grid_x <= obstacle_grid_x + 3) \
-            #         and (obstacle_grid_y - 3 <= grid_y <= obstacle_grid_y + 3):  # about 3 squares
-            #     print("OBSTACLE (TURN)!!")
-            #     return False
-
-        return True
-
-    def check_exclude_obstacles(self, final_pixel_pos, turn):
-        # Checks if final position will clash into any obstacles, then checks for turning radius obstacles
-        if self.check_exclude_obstacles_straight(final_pixel_pos):
-            return self.check_turning_radius(turn)
-        return False
 
     def reset(self):
         self.angle = constants.ROBOT_STARTING_ANGLE
         self.grid_x = constants.ROBOT_STARTING_X
         self.grid_y = constants.ROBOT_STARTING_Y
-        self.pixel_pos = Vector2(self.grid.grid_to_pixel([self.grid_x, self.grid_y])[0],
-                                 self.grid.grid_to_pixel([self.grid_x, self.grid_y])[1])
-        self.car_rect = pygame.Rect(self.pixel_pos[0] - (0.5 * self.screen_width),
-                                    self.pixel_pos[1] - (0.5 * self.screen_height),
-                                    self.screen_width, self.screen_height)
-        self.redraw_car()
+        self.pixel_pos = Vector2(self.grid.grid_to_pixel(self.grid_x, self.grid_y))
+        self.redraw_car_refresh_screen()
 
 

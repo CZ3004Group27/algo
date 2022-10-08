@@ -1,6 +1,6 @@
 """
 Explanation on coordinate system:
-    * the display screen and also (row, column) system use a coordinate system with
+    * the display screen pixels:
         + origin: top left
         + x-axis: pointing right
         + y-axis: pointing down
@@ -21,9 +21,6 @@ import numpy as np
 # This sets the margin between each Cell
 MARGIN = 2
 
-# This is the margin around the top and left of the grid on screen display
-OUTER_MARGIN = 120
-
 COLOR_DICT = {
     CellStatus.EMPTY: constants.WHITE,
     CellStatus.START: constants.BLUE,
@@ -35,13 +32,17 @@ COLOR_DICT = {
 
 class Grid(object):
 
-    def __init__(self, grid_column: int, grid_row: int, block_size):
+    def __init__(self, grid_column: int, grid_row: int, block_size: int, grid_from_screen_top_left: tuple):
         self.size_x = grid_column
         self.size_y = grid_row
         self.max_x = self.size_x - 1
         self.max_y = self.size_y - 1
         self.start_zone_size = 4
         self.block_size = block_size # size in cm of 1 square cell
+        # This is the margin around the top and left of the grid on screen
+        # display
+        self.outer_margin_x_pixel = grid_from_screen_top_left[0] # pixel from left
+        self.outer_margin_y_pixel = grid_from_screen_top_left[1] # pixel from top
         self.cells = np.empty((self.size_x, self.size_y), dtype=Cell)
         self.initialize_cells()
         self.optimized_target_locations = None
@@ -72,30 +73,11 @@ class Grid(object):
 
         self.set_start_zone()
 
-    def reset(self, screen):
-        """Reset both grid data and reflect this on the UI"""
-        self.reset_data()
-        self.update_grid(screen)
-
     def get_block_size(self):
         return self.block_size
 
     def get_cells(self):
         return self.cells
-
-    def get_cell_by_row_column(self, row, column) -> Cell:
-        x, y = self.get_xy_from_row_column(row, column)
-        return self.cells[x][y]
-
-    def get_xy_from_row_column(self, row, column) -> tuple:
-        x = column
-        y = self.max_y - row
-        return (x, y)
-
-    def get_row_column_from_xy(self, x, y) -> tuple:
-        column = x
-        row = self.max_y - y
-        return (row, column)
 
     def get_cell_by_xycoords(self, x, y) -> Cell:
         return self.cells[x][y]
@@ -159,9 +141,9 @@ class Grid(object):
 
     def grid_clicked(self, pixel_x, pixel_y):
         # Change the x/y screen coordinates to grid coordinates
-        x_grid, y_grid = self.pixel_to_grid((pixel_x, pixel_y))
+        grid_x, grid_y = self.pixel_to_grid((pixel_x, pixel_y))
 
-        selected_cell = self.get_cell_by_xycoords(x_grid, y_grid)
+        selected_cell = self.get_cell_by_xycoords(grid_x, grid_y)
         previous_status = selected_cell.get_cell_status()
         selected_cell.cell_clicked()
         current_status = selected_cell.get_cell_status()
@@ -183,7 +165,7 @@ class Grid(object):
             self.set_obstacle_boundary_cells_around(selected_cell)
 
         else:
-            raise Exception("Cell status does not update properly. On click, cell does not become obstacle or get removed from being an obstacle.")
+            print("Clicked on a cell that cannot be chosen as obstacle cell.")
 
     def get_boundary_cells_coords(self, cell: Cell):
         """Return a list of coordinates [x_coord, y_coord] of the cells
@@ -245,13 +227,15 @@ class Grid(object):
     def set_obstacle_as_visited(self, obstacle_cell):
         obstacle_cell.set_obstacle_visited_status()
 
-    def update_grid(self, screen):
+    def get_updated_grid_surface(self) -> pygame.Surface:
         if constants.HEADLESS:
             return
+        self.grid_surface = pygame.Surface(self.get_total_pixel_size())
+        self.grid_surface.fill(constants.BLACK)
         # Draw the grid
-        for row in range(20):
-            for column in range(20):
-                cell = self.get_cell_by_row_column(row, column)
+        for grid_x in range(self.size_x):
+            for grid_y in range(self.size_y):
+                cell = self.get_cell_by_xycoords(grid_x, grid_y)
                 color = COLOR_DICT[cell.get_cell_status()]
                 cell_surface = pygame.Surface((self.block_size, self.block_size))
                 cell_surface.fill(color)
@@ -265,18 +249,25 @@ class Grid(object):
                         pygame.Rect(0, 0, self.block_size, 8))
                     cell_surface = pygame.transform.rotate(cell_surface, obstacle_direction)
 
-                screen.blit(cell_surface,
+                self.grid_surface.blit(cell_surface,
                     (
-                        OUTER_MARGIN + (MARGIN + self.block_size) * column + MARGIN,
-                        OUTER_MARGIN + (MARGIN + self.block_size) * row + MARGIN,
+                        (MARGIN + self.block_size) * grid_x + MARGIN,
+                        (MARGIN + self.block_size) * (self.max_y - grid_y) + MARGIN,
                     ))
+        return self.grid_surface
 
     def grid_to_pixel(self, pos):
-        x_pixel = (pos[0]) * (self.block_size + MARGIN) + 120 + (self.block_size + MARGIN) / 2
-        y_pixel = (19 - pos[1]) * (self.block_size + MARGIN) + 120 + (self.block_size + MARGIN) / 2
-        return [x_pixel, y_pixel]
+        pixel_x = (pos[0]) * (self.block_size + MARGIN) + self.outer_margin_x_pixel + (self.block_size + MARGIN) / 2
+        pixel_y = (self.max_y - pos[1]) * (self.block_size + MARGIN) + self.outer_margin_y_pixel + (self.block_size + MARGIN) / 2
+        return [pixel_x, pixel_y]
 
     def pixel_to_grid(self, pos):
-        x_grid = (pos[0] - 120) // (self.block_size + MARGIN)
-        y_grid = 19 - ((pos[1] - 120) // (self.block_size + MARGIN))
-        return [x_grid, y_grid]
+        grid_x = int((pos[0] - self.outer_margin_x_pixel) // (self.block_size + MARGIN))
+        grid_y = int(self.max_y - ((pos[1] - self.outer_margin_y_pixel) // (self.block_size + MARGIN)))
+        return [grid_x, grid_y]
+
+    def get_total_pixel_size(self) -> tuple:
+        # there are always (num_cell + 1) margin for (num_cell) cells
+        size_x_pixel = self.size_x * (self.block_size + MARGIN) + MARGIN
+        size_y_pixel = self.size_y * (self.block_size + MARGIN) + MARGIN
+        return (size_x_pixel, size_y_pixel)

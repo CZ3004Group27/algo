@@ -53,16 +53,14 @@ class Simulator:
         # Hamiltonian path planner class
         self.hamiltonian_path_planner = None
 
+        # This is the margin around the left and top of the grid on screen
+        # display
+        self.grid_from_screen_top_left = (120, 120)
         # Initialise 20 by 20 Grid
-        self.grid = Grid(20, 20, 20)
-        # self.grid.update_grid(self.screen)
-        # Outline Grid
-        self.grid_surface = self.root.Surface((442, 442))
-        self.grid_surface.fill(constants.BLACK)
+        self.grid = Grid(20, 20, 20, self.grid_from_screen_top_left)
         if not constants.HEADLESS:
-            self.screen.blit(self.grid_surface, (120, 120))
-        # Draw the grid
-        self.grid.update_grid(self.screen)
+            # Draw the grid
+            self.redraw_grid()
 
         # Initialise side panel with buttons
         self.panel = Panel(self.screen)
@@ -76,7 +74,7 @@ class Simulator:
         current_dir = os.path.dirname(os.path.abspath(__file__))
         image_path = os.path.join(current_dir, "car.png")
         car_image = pygame.image.load(image_path)
-        self.car = Robot(self, self.screen, self.grid, self.grid_surface, constants.ROBOT_W, constants.ROBOT_H,
+        self.car = Robot(self, self.screen, self.grid, constants.ROBOT_W, constants.ROBOT_H,
                          constants.ROBOT_STARTING_X, constants.ROBOT_STARTING_Y, constants.ROBOT_STARTING_ANGLE,
                          car_image)
         # Draw the car
@@ -90,6 +88,10 @@ class Simulator:
 
         # count of 'no image result' exception
         self.no_image_result_count = 0
+
+    def redraw_grid(self):
+        self.grid_surface = self.grid.get_updated_grid_surface()
+        self.screen.blit(self.grid_surface, self.grid_from_screen_top_left)
 
     def run(self):
         # Loop until the user clicks the close button.
@@ -120,12 +122,9 @@ class Simulator:
                     elif event.type == pygame.MOUSEBUTTONDOWN:
                         # User clicks the mouse. Get the position
                         pos = pygame.mouse.get_pos()
-                        if (constants.min_pixel_pos_x < pos[0] < constants.max_pixel_pos_x) and (
-                            constants.min_pixel_pos_y < pos[1] < constants.max_pixel_pos_y
-                        ):  # if area clicked is within grid
+                        if self.is_pos_clicked_within_grid(pos):
                             self.grid.grid_clicked(pos[0], pos[1])
-                            self.screen.blit(self.grid_surface, (120, 120))  # Redraw the grid outlines
-                            self.grid.update_grid(self.screen)  # Update grid if obstacles added
+                            self.redraw_grid()
                             self.car.draw_car()  # Redraw the car
 
                         else:  # otherwise, area clicked is outside of grid
@@ -139,6 +138,16 @@ class Simulator:
 
         # Be IDLE friendly. If you forget this line, the program will 'hang' on exit.
         self.root.quit()
+
+    def is_pos_clicked_within_grid(self, pos):
+        grid_from_screen_left = self.grid_from_screen_top_left[0]
+        grid_from_screen_top = self.grid_from_screen_top_left[1]
+
+        grid_pixel_size_x, grid_pixel_size_y = self.grid.get_total_pixel_size()
+        if grid_from_screen_left < pos[0] < grid_from_screen_left + grid_pixel_size_x and \
+           grid_from_screen_top < pos[1] < grid_from_screen_top + grid_pixel_size_y:
+            return True
+        return False
 
     def start_algo_client(self):
         """Connect to RPi wifi server and start a thread to receive messages """
@@ -201,7 +210,7 @@ class Simulator:
             robot_x, robot_y, robot_dir = int(robot_params["x"]), int(robot_params["y"]), int(robot_params["dir"])
 
             self.callback_queue.put([self.car.update_robot, [robot_dir, self.grid.grid_to_pixel((robot_x, robot_y))]])
-            self.callback_queue.put(self.car.redraw_car)
+            self.callback_queue.put(self.car.redraw_car_refresh_screen)
 
             # Create obstacles given parameters
             logging.info("Creating obstacles...")
@@ -211,7 +220,7 @@ class Simulator:
                 self.callback_queue.put([self.grid.create_obstacle, [grid_x, grid_y, dir]])
 
             # Update grid, start explore
-            self.callback_queue.put(self.car.redraw_car)
+            self.callback_queue.put(self.car.redraw_car_refresh_screen)
 
             logging.info("[AND] Doing path calculation...")
             self.callback_queue.put(self.start_button_clicked)
@@ -366,7 +375,8 @@ class Simulator:
         os.system(f'python -m imagerec.predict \"{self.image_folder}\"')
 
     def reset_button_clicked(self):
-        self.grid.reset(self.screen)
+        self.grid.reset_data()
+        self.redraw_grid()
         self.car.reset()
 
 if __name__ == "__main__":
