@@ -256,7 +256,7 @@ class Grid(object):
                     ))
         return self.grid_surface
 
-    def grid_to_pixel(self, pos):
+    def grid_to_pixel(self, pos: tuple):
         pixel_x = (pos[0]) * (self.block_size + MARGIN) + self.outer_margin_x_pixel + (self.block_size + MARGIN) / 2
         pixel_y = (self.max_y - pos[1]) * (self.block_size + MARGIN) + self.outer_margin_y_pixel + (self.block_size + MARGIN) / 2
         return [pixel_x, pixel_y]
