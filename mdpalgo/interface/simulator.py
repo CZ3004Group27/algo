@@ -210,7 +210,7 @@ class Simulator:
             robot_x, robot_y, robot_dir = int(robot_params["x"]), int(robot_params["y"]), int(robot_params["dir"])
 
             self.callback_queue.put([self.car.update_robot, [robot_dir, self.grid.grid_to_pixel((robot_x, robot_y))]])
-            self.callback_queue.put(self.car.redraw_car)
+            self.callback_queue.put(self.car.redraw_car_refresh_screen)
 
             # Create obstacles given parameters
             logging.info("Creating obstacles...")
@@ -220,7 +220,7 @@ class Simulator:
                 self.callback_queue.put([self.grid.create_obstacle, [grid_x, grid_y, dir]])
 
             # Update grid, start explore
-            self.callback_queue.put(self.car.redraw_car)
+            self.callback_queue.put(self.car.redraw_car_refresh_screen)
 
             logging.info("[AND] Doing path calculation...")
             self.callback_queue.put(self.start_button_clicked)

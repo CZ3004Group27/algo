@@ -106,7 +106,7 @@ class PathPlan(object):
 
         self.collection_of_robot_pos.append(self.get_robot_pos())
         self.grid.set_obstacle_as_visited(self.obstacle_cell)
-        self.robot.redraw_car()
+        self.robot.redraw_car_refresh_screen()
 
         self.save_search_info()
 
