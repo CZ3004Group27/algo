@@ -63,7 +63,9 @@ class Simulator:
             self.redraw_grid()
 
         # Initialise side panel with buttons
-        self.panel = Panel(self.screen)
+        self.panel = Panel()
+        self.panel_from_screen_top_left = (650, 120)
+        self.screen.blit(self.panel.get_surface(), self.panel_from_screen_top_left)
 
         # Used to manage how fast the screen updates
         # self.clock = pygame.time.Clock()
@@ -137,7 +139,6 @@ class Simulator:
 
         # Be IDLE friendly. If you forget this line, the program will 'hang' on
         # exit.
-        print("closing")
         self.root.quit()
 
     def is_pos_clicked_within_grid(self, pos):
@@ -303,18 +304,29 @@ class Simulator:
 
     def reprint_screen_and_buttons(self):
         self.screen.fill(constants.GRAY)
+        self.redraw_buttons_panel()
+
+    def redraw_buttons_panel(self):
         self.panel.redraw_buttons()
+        self.screen.blit(self.panel.get_surface(), self.panel_from_screen_top_left)
+
+    def get_screen_pixel_from_panel_pixel(self, panel_x, panel_y):
+        x = self.panel_from_screen_top_left[0] + panel_x
+        y = self.panel_from_screen_top_left[1] + panel_y
+        return x, y
 
     def check_button_clicked(self, pos):
         # Check if start button was pressed first:
         start_button = self.panel.buttons[-1]
-        x, y, l, h = start_button.get_xy_and_lh()
+        panel_x, panel_y, l, h = start_button.get_xy_and_lh()
+        x, y = self.get_screen_pixel_from_panel_pixel(panel_x, panel_y)
         if (x < pos[0] < (l + x)) and (y < pos[1] < (h + y)):
             self.start_button_clicked()
             return
 
         for button in self.panel.buttons[0:-1]:
-            x, y, l, h = button.get_xy_and_lh()
+            panel_x, panel_y, l, h = button.get_xy_and_lh()
+            x, y = self.get_screen_pixel_from_panel_pixel(panel_x, panel_y)
             if (x < pos[0] < (l + x)) and (y < pos[1] < (h + y)):
                 button_func = self.panel.get_button_clicked(button)
                 if button_func == "RESET":
@@ -325,9 +337,10 @@ class Simulator:
                     self.start_algo_client()
                 elif button_func == "DISCONNECT":
                     print("Disconnect button pressed.")
-                    self.comms.disconnect()
-                    constants.RPI_CONNECTED = False
-                    self.comms = None
+                    if constants.RPI_CONNECTED:
+                        self.comms.disconnect()
+                        constants.RPI_CONNECTED = False
+                        self.comms = None
 
                 # for testing purposes
                 elif button_func == "FORWARD":
