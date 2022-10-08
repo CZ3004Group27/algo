@@ -1,10 +1,14 @@
 import logging
+import threading
 import os
 from mdpalgo import constants
 from mdpalgo.communication.comms import AlgoClient
 from mdpalgo.communication.message_parser import MessageParser, MessageType, TaskType
 from imagerec.infer import infer
 from imagerec.helpers import get_path_to
+
+# for saving the image
+from PIL import Image
 
 import fastestalgo.images
 
@@ -77,12 +81,14 @@ class Week9Task:
             image_number = int(previous_image_name.split("_")[-1]) + 1
             image_name = "img_" + str(image_number)
 
+        print("Image label:", target_id)
         print("Image name:", image_name)
         image.save(self.image_folder.joinpath(f"{image_name}.jpg"))
         image_result_string = self.get_image_result_string(target_id)
 
-        # send image result string to rpi
-        self.comms.send(image_result_string)
+        if constants.RPI_CONNECTED:
+            # send image result string to rpi
+            self.comms.send(image_result_string)
 
         # change obstacle_id to 2 after sending first image result
         if self.obstacle_id == 1:
@@ -93,12 +99,15 @@ class Week9Task:
             os.system(f'python -m imagerec.predict \"{self.image_folder}\"')
 
     def check_infer_result(self, infer_result: list):
+        if infer_result == "Nothing detected":
+            raise Exception("Nothing detected")
+
         # remove all elements in infer_result that are "Bullseye"
         result = [elem for elem in infer_result if elem != "Bullseye"]
 
         # if all elements in list are "Bullseye", raise exception
         if len(result) == 0:
-            raise Exception("No image result")
+            raise Exception("Only Bullseye")
         # get first element that is not "Bullseye"
         else:
             return result[0]
@@ -125,6 +134,28 @@ if __name__ == "__main__":
     if args.testwifi:
         constants.WIFI_IP = constants.TEST_IP
         print("Use local IP address for integration testing without RPi")
+
+        X = Week9Task()
+
+        # Test the receiving image function
+        import fastestalgo.tests.images
+        image_folder = get_path_to(fastestalgo.tests.images)
+
+        # Send first image
+        image_path = image_folder.joinpath("left_arrow.jpg")
+        with Image.open(image_path) as image:
+            image.load()
+        data_dict = {"image": image}
+        X.on_receive_image_taken_message(data_dict)
+
+        # Send second image (predict on finish should be called after this)
+        image_path2 = image_folder.joinpath("right_arrow.jpg")
+        with Image.open(image_path2) as image2:
+            image2.load()
+        data_dict2 = {"image": image2}
+        X.on_receive_image_taken_message(data_dict2)
+
+        X.run()
 
     X = Week9Task()
     X.run()
