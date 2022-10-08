@@ -5,6 +5,7 @@ from mdpalgo import constants
 import pygame
 from mdpalgo.constants import BUFFER
 from mdpalgo.map.configuration import Pose
+from enum import Enum
 
 # This sets the margin between each Cell
 MARGIN = 2
@@ -29,6 +30,13 @@ class ObstacleTurnException(Exception):
 class CheckingException(Exception):
     pass
 
+class RobotMovement(Enum):
+    FORWARD = "F"
+    BACKWARD = "B"
+    FORWARD_RIGHT = "FR"
+    FORWARD_LEFT = "FL"
+    BACKWARD_RIGHT = "BR"
+    BACKWARD_LEFT = "BL"
 
 class Robot(object):
 
@@ -103,6 +111,22 @@ class Robot(object):
             return True
         return abs(self.get_pixel_pos()[0] - final_pixel_pos[0]) < 4 and abs(
             self.get_pixel_pos()[1] - final_pixel_pos[1]) < 4
+
+    def perform_move(self, move: RobotMovement):
+        if move == RobotMovement.FORWARD:
+            self.move_forward()
+        elif move == RobotMovement.BACKWARD:
+            self.move_backward()
+        elif move == RobotMovement.FORWARD_RIGHT:
+            self.move_forward_steer_right()
+        elif move == RobotMovement.FORWARD_LEFT:
+            self.move_forward_steer_left()
+        elif move == RobotMovement.BACKWARD_RIGHT:
+            self.move_backward_steer_right()
+        elif move == RobotMovement.BACKWARD_LEFT:
+            self.move_backward_steer_left()
+        else:
+            raise NotImplementedError(f"Robot is not implemented to perform {move} yet")
 
     # TODO: define possible movements (for turning motions picture steering wheel direction)
     # ALL MOTIONS take place in minimal unit.
@@ -401,8 +425,8 @@ class Robot(object):
         final_pixel_pos = arglist[1]
         self.angle = final_angle
         self.pixel_pos = final_pixel_pos
-        self.grid_x = self.grid.pixel_to_grid(final_pixel_pos)[0]
-        self.grid_y = self.grid.pixel_to_grid(final_pixel_pos)[1]
+        self.grid_x = int(self.grid.pixel_to_grid(final_pixel_pos)[0])
+        self.grid_y = int(self.grid.pixel_to_grid(final_pixel_pos)[1])
         self.car_rect = pygame.Rect(self.pixel_pos[0] - (0.5 * self.screen_width),
                                     self.pixel_pos[1] - (0.5 * self.screen_height),
                                     self.screen_width, self.screen_height)
@@ -441,7 +465,6 @@ class Robot(object):
             target_grid_x = target_loc[0]
             target_grid_y = target_loc[1]
             target_direction = target_loc[2]
-            obstacle_cell = target_loc[3]
 
             final_grid_pos = self.grid.pixel_to_grid(final_pixel_pos)
             final_grid_x = final_grid_pos[0]
@@ -452,7 +475,6 @@ class Robot(object):
                 # Check if in target grid
                 if (final_grid_x == target_grid_x) and (final_grid_y == target_grid_y) and (
                         final_angle == target_direction):
-                    self.grid.set_obstacle_as_visited(obstacle_cell)
 
                     # Repaint grid and car
                     self.redraw_car()

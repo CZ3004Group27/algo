@@ -12,7 +12,7 @@ class CellStatus(IntEnum):
 
 
 class Cell:
-    def __init__(self, x_coordinate, y_coordinate, status):
+    def __init__(self, x_coordinate, y_coordinate, status: CellStatus = CellStatus.EMPTY):
         # self.direction = None
         self.x_coordinate = x_coordinate
         self.y_coordinate = y_coordinate
@@ -58,6 +58,9 @@ class Cell:
 
     def get_obstacle(self):
         return self.obstacle
+
+    def remove_obstacle(self):
+        self.obstacle = None
 
     def get_obstacle_direction(self):
         if self.obstacle is None:
