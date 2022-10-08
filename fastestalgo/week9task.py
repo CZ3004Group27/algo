@@ -10,6 +10,9 @@ from imagerec.helpers import get_path_to
 from PIL import Image
 
 import fastestalgo.images
+
+
+LIMIT_NO_IMAGE_RESULT_COUNT = 2
 class Week9Task:
     def __init__(self):
         self.comms = None
@@ -47,23 +50,38 @@ class Week9Task:
         infer_result = infer(image)
         try:
             target_id = self.check_infer_result(infer_result)
+            print("Image label:", target_id)
 
             # reset exception count if there is an image result returned after retaking photo once
-            if self.no_image_result_count == 1:
-                self.no_image_result_count = 0
+            self.reset_no_image_result_count()
 
         except Exception as e:
             logging.exception(e)
-            self.no_image_result_count += 1
+            self.increment_no_image_result_count()
 
             # if no image result for 2 times, return early to prevent request photo loop
-            if self.no_image_result_count == 2:
-                self.no_image_result_count = 0
+            if self.check_no_image_result_count_exceed_limit():
+                self.reset_no_image_result_count()
                 return
 
             self.request_photo_from_rpi() # take photo again if exception raised
             return
 
+        self.save_image(image)
+        image_result_string = self.get_image_result_string(target_id)
+
+        # send image result string to rpi
+        self.send_message_to_rpi(image_result_string)
+
+        # change obstacle_id to 2 after sending first image result
+        if self.obstacle_id == 1:
+            self.obstacle_id = 2
+
+        # run predict function after image result of obstacle 2 has been sent to rpi
+        elif self.obstacle_id == 2:
+            os.system(f'python -m imagerec.predict \"{self.image_folder}\"')
+
+    def save_image(self, image):
         # get list of images
         list_of_images = list(self.image_folder.glob("*.jpg"))
         print("List of images:", list_of_images)
@@ -79,21 +97,17 @@ class Week9Task:
             image_number = int(previous_image_name.split("_")[-1]) + 1
             image_name = "img_" + str(image_number)
 
-        print("Image label:", target_id)
         print("Image name:", image_name)
         image.save(self.image_folder.joinpath(f"{image_name}.jpg"))
-        image_result_string = self.get_image_result_string(target_id)
 
-        # send image result string to rpi
-        self.send_message_to_rpi(image_result_string)
+    def increment_no_image_result_count(self):
+        self.no_image_result_count += 1
 
-        # change obstacle_id to 2 after sending first image result
-        if self.obstacle_id == 1:
-            self.obstacle_id = 2
+    def reset_no_image_result_count(self):
+        self.no_image_result_count = 0
 
-        # run predict function after image result of obstacle 2 has been sent to rpi
-        elif self.obstacle_id == 2:
-            os.system(f'python -m imagerec.predict \"{self.image_folder}\"')
+    def check_no_image_result_count_exceed_limit(self):
+        return self.no_image_result_count >= LIMIT_NO_IMAGE_RESULT_COUNT
 
     def send_message_to_rpi(self, message: str):
         if constants.RPI_CONNECTED:
@@ -134,6 +148,13 @@ if __name__ == "__main__":
     # Test the receiving image function
     import fastestalgo.tests.images
     image_folder = get_path_to(fastestalgo.tests.images)
+
+    # Send first image only bullseye (so not saved)
+    image_path = image_folder.joinpath("Bullseye.jpg")
+    with Image.open(image_path) as image:
+        image.load()
+    data_dict = {"image": image}
+    X.on_receive_image_taken_message(data_dict)
 
     # Send first image
     image_path = image_folder.joinpath("left_arrow.jpg")
