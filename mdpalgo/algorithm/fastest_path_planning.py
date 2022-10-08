@@ -26,11 +26,21 @@ class ImprovedNode:
         self.h = 0
         self.f = 0
 
+class Distance:
+    """
+        A class with implementation of distances between two 2D points
+    """
+    def manhattan(self, xA: int, yA: int, xB: int, yB: int) -> int:
+        return abs(xA-xB) + abs(yA-yB)
+
+    def squared_euclidean(self, xA: int, yA: int, xB: int, yB: int) -> int:
+        return (xA - xB) ** 2 + (yA - yB) ** 2
+
 class AutoPlanner():
     def __init__(self):
         self.TURNING_RADIUS = constants.TURNING_RADIUS
         # if robot node is at this distance away from obstacle, safe!
-        self.safe_distance = 4
+        self.safe_squared_distance = 8
         # map movement to a relative vector wrt the current direction
         self.map_move_to_relative_displacement =  {
             RobotMovement.FORWARD: [0, 1],
@@ -80,6 +90,7 @@ class AutoPlanner():
         self.turning_factor = 5 # assume perfect circle, about 4.71
 
         self.node_index_in_yet_to_visit = 2
+        self.distance_calculator = Distance()
 
     def initialize_node(self, node_position: list) -> ImprovedNode:
         """f, h, g are all initialized to 0"""
@@ -155,10 +166,10 @@ class AutoPlanner():
             return True
 
         for obs_x, obs_y in self.obs_coords:
-            distance = self.manhattan_distance(
+            distance = self.distance_calculator.squared_euclidean(
                 node.pose.x, node.pose.y,
                 obs_x, obs_y)
-            if distance < self.safe_distance:
+            if distance < self.safe_squared_distance:
                 return True
 
         return False
@@ -189,9 +200,6 @@ class AutoPlanner():
 
     def add_node_to_visited(self, node: ImprovedNode):
         self.visited_list.add(node.pose.to_tuple())
-
-    def manhattan_distance(self, xA, yA, xB, yB):
-        return abs(xA-xB) + abs(yA-yB)
 
     def set_boundary_for_nodes(self):
         """The node can be slightly outside of the maze"""
@@ -264,7 +272,7 @@ class AutoPlanner():
         """Return estimated cost to go to the end node"""
         xA, yA = node.pose.x, node.pose.y
         xB, yB = self.end_node.pose.x, self.end_node.pose.y
-        return self.manhattan_distance(xA, yA, xB, yB)
+        return self.distance_calculator.manhattan(xA, yA, xB, yB)
 
     def is_node_higher_cost_than_yet_to_visit(self, node: ImprovedNode):
         """Check if node is already in yet to visit and has higher cost than
