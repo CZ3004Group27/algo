@@ -53,14 +53,16 @@ class Simulator:
         # Hamiltonian path planner class
         self.hamiltonian_path_planner = None
 
+        # This is the margin around the top and left of the grid on screen
+        # display
+        self.grid_from_screen_border = 120
         # Initialise 20 by 20 Grid
-        self.grid = Grid(20, 20, 20)
-        # self.grid.update_grid(self.screen)
+        self.grid = Grid(20, 20, 20, self.grid_from_screen_border)
         # Outline Grid
         self.grid_surface = self.root.Surface((442, 442))
         self.grid_surface.fill(constants.BLACK)
         if not constants.HEADLESS:
-            self.screen.blit(self.grid_surface, (120, 120))
+            self.screen.blit(self.grid_surface, (self.grid_from_screen_border, self.grid_from_screen_border))
         # Draw the grid
         self.grid.update_grid(self.screen)
 
@@ -124,7 +126,7 @@ class Simulator:
                             constants.min_pixel_pos_y < pos[1] < constants.max_pixel_pos_y
                         ):  # if area clicked is within grid
                             self.grid.grid_clicked(pos[0], pos[1])
-                            self.screen.blit(self.grid_surface, (120, 120))  # Redraw the grid outlines
+                            self.screen.blit(self.grid_surface, (self.grid_from_screen_border, self.grid_from_screen_border))  # Redraw the grid outlines
                             self.grid.update_grid(self.screen)  # Update grid if obstacles added
                             self.car.draw_car()  # Redraw the car
 

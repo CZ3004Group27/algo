@@ -21,9 +21,6 @@ import numpy as np
 # This sets the margin between each Cell
 MARGIN = 2
 
-# This is the margin around the top and left of the grid on screen display
-OUTER_MARGIN = 120
-
 COLOR_DICT = {
     CellStatus.EMPTY: constants.WHITE,
     CellStatus.START: constants.BLUE,
@@ -35,13 +32,16 @@ COLOR_DICT = {
 
 class Grid(object):
 
-    def __init__(self, grid_column: int, grid_row: int, block_size):
+    def __init__(self, grid_column: int, grid_row: int, block_size: int, grid_from_screen_border: int):
         self.size_x = grid_column
         self.size_y = grid_row
         self.max_x = self.size_x - 1
         self.max_y = self.size_y - 1
         self.start_zone_size = 4
         self.block_size = block_size # size in cm of 1 square cell
+        # This is the margin around the top and left of the grid on screen
+        # display
+        self.OUTER_MARGIN = grid_from_screen_border
         self.cells = np.empty((self.size_x, self.size_y), dtype=Cell)
         self.initialize_cells()
         self.optimized_target_locations = None
@@ -253,16 +253,16 @@ class Grid(object):
 
                 screen.blit(cell_surface,
                     (
-                        OUTER_MARGIN + (MARGIN + self.block_size) * grid_x + MARGIN,
-                        OUTER_MARGIN + (MARGIN + self.block_size) * (self.max_y - grid_y) + MARGIN,
+                        self.OUTER_MARGIN + (MARGIN + self.block_size) * grid_x + MARGIN,
+                        self.OUTER_MARGIN + (MARGIN + self.block_size) * (self.max_y - grid_y) + MARGIN,
                     ))
 
     def grid_to_pixel(self, pos):
-        x_pixel = (pos[0]) * (self.block_size + MARGIN) + OUTER_MARGIN + (self.block_size + MARGIN) / 2
-        y_pixel = (self.max_y - pos[1]) * (self.block_size + MARGIN) + OUTER_MARGIN + (self.block_size + MARGIN) / 2
+        x_pixel = (pos[0]) * (self.block_size + MARGIN) + self.OUTER_MARGIN + (self.block_size + MARGIN) / 2
+        y_pixel = (self.max_y - pos[1]) * (self.block_size + MARGIN) + self.OUTER_MARGIN + (self.block_size + MARGIN) / 2
         return [x_pixel, y_pixel]
 
     def pixel_to_grid(self, pos):
-        x_grid = (pos[0] - OUTER_MARGIN) // (self.block_size + MARGIN)
-        y_grid = self.max_y - ((pos[1] - OUTER_MARGIN) // (self.block_size + MARGIN))
+        x_grid = (pos[0] - self.OUTER_MARGIN) // (self.block_size + MARGIN)
+        y_grid = self.max_y - ((pos[1] - self.OUTER_MARGIN) // (self.block_size + MARGIN))
         return [x_grid, y_grid]
