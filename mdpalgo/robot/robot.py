@@ -136,7 +136,6 @@ class Robot(object):
     # 4. backward right/anticlockwise pi/2 turn
     # 5. backward left/clockwise pi/2 turn
     def move_forward(self):
-        # print("MOVE FORWARD FACING", self.angle)
         initial_pixel_pos = self.get_pixel_pos()
         # Set position to stop moving
         if self.angle == constants.NORTH:  # CAR FACING NORTH
@@ -150,7 +149,6 @@ class Robot(object):
         else:
             final_pixel_pos = initial_pixel_pos  # car will not move
         final_angle = self.angle
-        final_grid_pos = self.grid.pixel_to_grid(final_pixel_pos)
 
         # Set velocity of car
         self.velocity += (0, -self.speed)
@@ -167,8 +165,6 @@ class Robot(object):
         self.velocity -= (0, -self.speed)
         self.correct_coords_and_angle(final_angle, final_pixel_pos)
 
-        self.check_if_target_reached(final_pixel_pos, final_angle)
-
     def move_backward(self):
         # print("MOVE BACKWARD FACING", self.angle)
         initial_pixel_pos = self.get_pixel_pos()
@@ -184,7 +180,6 @@ class Robot(object):
         else:
             final_pixel_pos = initial_pixel_pos  # car will not move
         final_angle = self.angle
-        final_grid_pos = self.grid.pixel_to_grid(final_pixel_pos)
 
         # Set velocity of car
         self.velocity += (0, self.speed)
@@ -200,7 +195,6 @@ class Robot(object):
         self.velocity -= (0, self.speed)
         self.correct_coords_and_angle(final_angle, final_pixel_pos)
 
-        self.check_if_target_reached(final_pixel_pos, final_angle)
         return True
 
     def move_forward_steer_right(self):
@@ -226,7 +220,6 @@ class Robot(object):
         else:
             final_pixel_pos = initial_pixel_pos  # car will not move
             final_angle = initial_angle
-        final_grid_pos = self.grid.pixel_to_grid(final_pixel_pos)
 
         # Set velocity of car
         self.velocity += (0, -self.speed)
@@ -248,7 +241,6 @@ class Robot(object):
         self.velocity -= (0, -self.speed)
         self.correct_coords_and_angle(final_angle, final_pixel_pos)
 
-        self.check_if_target_reached(final_pixel_pos, final_angle)
         return True
 
     def move_forward_steer_left(self):
@@ -270,7 +262,6 @@ class Robot(object):
         else:
             final_pixel_pos = initial_pixel_pos  # car will not move
             final_angle = initial_angle
-        final_grid_pos = self.grid.pixel_to_grid(final_pixel_pos)
 
         # Set velocity of car
         self.velocity += (0, -self.speed)
@@ -292,7 +283,6 @@ class Robot(object):
         self.velocity -= (0, -self.speed)
         self.correct_coords_and_angle(final_angle, final_pixel_pos)
 
-        self.check_if_target_reached(final_pixel_pos, final_angle)
         return True
 
     def move_backward_steer_right(self):
@@ -340,7 +330,6 @@ class Robot(object):
         self.velocity -= (0, -self.speed)
         self.correct_coords_and_angle(final_angle, final_pixel_pos)
 
-        self.check_if_target_reached(final_pixel_pos, final_angle)
         return True
 
     def move_backward_steer_left(self):
@@ -364,7 +353,6 @@ class Robot(object):
         else:
             final_pixel_pos = initial_pixel_pos  # car will not move
             final_angle = initial_angle
-        final_grid_pos = self.grid.pixel_to_grid(final_pixel_pos)
 
         # Set velocity of car
         self.velocity += (0, -self.speed)
@@ -386,7 +374,6 @@ class Robot(object):
         self.velocity -= (0, -self.speed)
         self.correct_coords_and_angle(final_angle, final_pixel_pos)
 
-        self.check_if_target_reached(final_pixel_pos, final_angle)
         return True
 
     def update_robot(self, arglist):
@@ -410,28 +397,6 @@ class Robot(object):
             return True
         # Set position to stop moving
         return self.check_movement_complete(final_pixel_pos) and abs(self.angle - initial_angle) > 80
-
-    # TODO: for now, it is strictly right in front of the image, 4 grids away (counting from the centre of car)
-    def check_if_target_reached(self, final_pixel_pos, final_angle):
-        target_locations = self.optimized_target_locations
-        for target_loc in target_locations:
-            target_grid_x = target_loc[0]
-            target_grid_y = target_loc[1]
-            target_direction = target_loc[2]
-
-            final_grid_pos = self.grid.pixel_to_grid(final_pixel_pos)
-            final_grid_x = final_grid_pos[0]
-            final_grid_y = final_grid_pos[1]
-            # print("Checking for obstacles visited:", target_loc)
-
-            if not constants.IS_CHECKING:
-                # Check if in target grid
-                if (final_grid_x == target_grid_x) and (final_grid_y == target_grid_y) and (
-                        final_angle == target_direction):
-
-                    # Repaint grid and car
-                    self.redraw_car()
-                    print("--Obstacle was visited!")
 
     def reset(self):
         self.angle = constants.ROBOT_STARTING_ANGLE
