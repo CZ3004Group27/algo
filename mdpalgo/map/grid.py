@@ -1,6 +1,6 @@
 """
 Explanation on coordinate system:
-    * the display screen and also (row, column) system use a coordinate system with
+    * the display screen pixels:
         + origin: top left
         + x-axis: pointing right
         + y-axis: pointing down
@@ -82,20 +82,6 @@ class Grid(object):
 
     def get_cells(self):
         return self.cells
-
-    def get_cell_by_row_column(self, row, column) -> Cell:
-        x, y = self.get_xy_from_row_column(row, column)
-        return self.cells[x][y]
-
-    def get_xy_from_row_column(self, row, column) -> tuple:
-        x = column
-        y = self.max_y - row
-        return (x, y)
-
-    def get_row_column_from_xy(self, x, y) -> tuple:
-        column = x
-        row = self.max_y - y
-        return (row, column)
 
     def get_cell_by_xycoords(self, x, y) -> Cell:
         return self.cells[x][y]
@@ -249,9 +235,9 @@ class Grid(object):
         if constants.HEADLESS:
             return
         # Draw the grid
-        for row in range(20):
-            for column in range(20):
-                cell = self.get_cell_by_row_column(row, column)
+        for grid_x in range(self.size_x):
+            for grid_y in range(self.size_y):
+                cell = self.get_cell_by_xycoords(grid_x, grid_y)
                 color = COLOR_DICT[cell.get_cell_status()]
                 cell_surface = pygame.Surface((self.block_size, self.block_size))
                 cell_surface.fill(color)
@@ -267,16 +253,16 @@ class Grid(object):
 
                 screen.blit(cell_surface,
                     (
-                        OUTER_MARGIN + (MARGIN + self.block_size) * column + MARGIN,
-                        OUTER_MARGIN + (MARGIN + self.block_size) * row + MARGIN,
+                        OUTER_MARGIN + (MARGIN + self.block_size) * grid_x + MARGIN,
+                        OUTER_MARGIN + (MARGIN + self.block_size) * (self.max_y - grid_y) + MARGIN,
                     ))
 
     def grid_to_pixel(self, pos):
-        x_pixel = (pos[0]) * (self.block_size + MARGIN) + 120 + (self.block_size + MARGIN) / 2
-        y_pixel = (19 - pos[1]) * (self.block_size + MARGIN) + 120 + (self.block_size + MARGIN) / 2
+        x_pixel = (pos[0]) * (self.block_size + MARGIN) + OUTER_MARGIN + (self.block_size + MARGIN) / 2
+        y_pixel = (self.max_y - pos[1]) * (self.block_size + MARGIN) + OUTER_MARGIN + (self.block_size + MARGIN) / 2
         return [x_pixel, y_pixel]
 
     def pixel_to_grid(self, pos):
-        x_grid = (pos[0] - 120) // (self.block_size + MARGIN)
-        y_grid = 19 - ((pos[1] - 120) // (self.block_size + MARGIN))
+        x_grid = (pos[0] - OUTER_MARGIN) // (self.block_size + MARGIN)
+        y_grid = self.max_y - ((pos[1] - OUTER_MARGIN) // (self.block_size + MARGIN))
         return [x_grid, y_grid]
