@@ -333,10 +333,10 @@ class AutoPlanner():
         # Create start and end node with initialized values for g, h and f
         self.start_node = self.initialize_node(start)
         self.end_node = self.initialize_node(end)
+        self.obs_coords = obs_coords # list of coordinates of obstacle cell
         self.reset_potential_goal_nodes()
         self.add_potential_goal_node(self.end_node)
         self.set_neighbours_as_potential_goal_nodes()
-        self.obs_coords = obs_coords # list of coordinates of obstacle cell
 
         self.initialize_yet_to_visit()
         self.initialize_visited_nodes()
