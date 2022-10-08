@@ -1,6 +1,6 @@
 import logging
 from mdpalgo.robot.robot import Robot
-from mdpalgo.algorithm.fastest_path_planning import AutoPlanner, RobotMovement
+from mdpalgo.algorithm.astar_planner import AutoPlanner, RobotMovement
 from mdpalgo import constants
 from mdpalgo.map.configuration import Pose
 from mdpalgo.map.grid import Grid
@@ -26,9 +26,6 @@ class PathPlan(object):
         self.all_robot_pos_dict = {}
         self.all_take_photo_dict = {}
         self.obstacle_list_rpi = []
-        self.EXCEPTION_COUNT = 0
-        self.REPEATED_LAST_TARGET = 0
-        self.IS_ON_PATH = False
         self.skipped_obstacles = []
         self.obstacle_key = None # the current obstacle key that RPi is going for
         self.num_move_completed_rpi = 0 # completed num moves by RPi to self.obstacle_key
@@ -109,8 +106,6 @@ class PathPlan(object):
         self.robot.redraw_car_refresh_screen()
 
         self.save_search_info()
-
-        self.IS_ON_PATH = False
 
     def draw_path_of_move_on_grid(self, cell_coords):
         for x, y in cell_coords:

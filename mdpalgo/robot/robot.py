@@ -3,7 +3,6 @@ from math import degrees
 from pygame.math import Vector2
 from mdpalgo import constants
 import pygame
-from mdpalgo.constants import BUFFER
 from mdpalgo.map.configuration import Pose
 from mdpalgo.map.grid import Grid
 from enum import Enum
@@ -36,7 +35,7 @@ class Robot(object):
         self.screen = screen
         self.grid = grid
         # the position of the middle of the car with respect to the grid
-        self.pixel_pos = Vector2(self.grid.grid_to_pixel([self.grid_x, self.grid_y]))
+        self.pixel_pos = Vector2(self.grid.grid_to_pixel((self.grid_x, self.grid_y)))
         self.angle = angle
         self.car_image = car_image
         self.car_rect: pygame.Rect
@@ -335,7 +334,7 @@ class Robot(object):
         self.angle = constants.ROBOT_STARTING_ANGLE
         self.grid_x = constants.ROBOT_STARTING_X
         self.grid_y = constants.ROBOT_STARTING_Y
-        self.pixel_pos = Vector2(self.grid.grid_to_pixel(self.grid_x, self.grid_y))
+        self.pixel_pos = Vector2(self.grid.grid_to_pixel((self.grid_x, self.grid_y)))
         self.redraw_car_refresh_screen()
 
 
