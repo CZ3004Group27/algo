@@ -92,6 +92,8 @@ class AutoPlanner():
         self.node_index_in_yet_to_visit = 2
         self.distance_calculator = Distance()
 
+        self.obs_coords = []
+
     def initialize_node(self, node_position: list) -> ImprovedNode:
         """f, h, g are all initialized to 0"""
         return ImprovedNode(None, tuple(node_position))
