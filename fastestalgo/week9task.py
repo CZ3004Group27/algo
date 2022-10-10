@@ -130,7 +130,7 @@ class Week9Task:
             return result[0]
 
     def get_image_result_string(self, target_id):
-        image_result_list = ["TARGET", target_id, self.obstacle_id]
+        image_result_list = ["TARGET", target_id]
         return '/'.join([str(elem) for elem in image_result_list])
 
     def request_photo_from_rpi(self):
