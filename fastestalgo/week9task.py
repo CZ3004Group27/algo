@@ -12,14 +12,12 @@ from PIL import Image
 import fastestalgo.images
 
 
-LIMIT_NO_IMAGE_RESULT_COUNT = 2
 class Week9Task:
     def __init__(self):
         self.comms = None
         self.parser = MessageParser()
         self.image_folder = get_path_to(fastestalgo.images)
         self.obstacle_id = 1 # obstacle_id = 1 or 2
-        self.no_image_result_count = 0
 
     def start_algo_client(self):
         """Connect to RPi wifi server"""
@@ -48,30 +46,19 @@ class Week9Task:
     def on_receive_image_taken_message(self, data_dict: dict):
         image = data_dict["image"]
         infer_result = infer(image)
-        try:
-            target_id = self.check_infer_result(infer_result)
-            print("Image label:", target_id)
 
-            # reset exception count if there is an image result returned after retaking photo once
-            self.reset_no_image_result_count()
+        target_id = self.check_infer_result(infer_result)
+        print("Image label:", target_id)
 
-        except Exception as e:
-            logging.exception(e)
-            self.increment_no_image_result_count()
-
-            # if no image result for 2 times, return early to prevent request photo loop
-            if self.check_no_image_result_count_exceed_limit():
-                self.reset_no_image_result_count()
-                return
-
-            self.request_photo_from_rpi() # take photo again if exception raised
-            return
-
-        self.save_image(image)
         image_result_string = self.get_image_result_string(target_id)
 
         # send image result string to rpi
         self.send_message_to_rpi(image_result_string)
+
+        if target_id == "Others":
+            return
+
+        self.save_image(image)
 
         # change obstacle_id to 2 after sending first image result
         if self.obstacle_id == 1:
@@ -100,45 +87,23 @@ class Week9Task:
         print("Image name:", image_name)
         image.save(self.image_folder.joinpath(f"{image_name}.jpg"))
 
-    def increment_no_image_result_count(self):
-        self.no_image_result_count += 1
-
-    def reset_no_image_result_count(self):
-        self.no_image_result_count = 0
-
-    def check_no_image_result_count_exceed_limit(self):
-        return self.no_image_result_count >= LIMIT_NO_IMAGE_RESULT_COUNT
-
     def send_message_to_rpi(self, message: str):
         if constants.RPI_CONNECTED:
             self.comms.send(message)
 
-    def check_infer_result(self, infer_result: list):
+    def check_infer_result(self, infer_result):
         if infer_result == "Nothing detected":
-            raise Exception("Nothing detected")
-        elif type(infer_result) == str:
-            raise Exception(f"Unrecognised infer result: {infer_result}")
+            return "Others"
 
-        # remove all elements in infer_result that are "Bullseye"
-        result = [elem for elem in infer_result if elem != "Bullseye"]
+        for result in infer_result:
+            if result == "Left" or result == "Right":
+                return result
 
-        # if all elements in list are "Bullseye", raise exception
-        if len(result) == 0:
-            raise Exception("Only Bullseye")
-        # get first element that is not "Bullseye"
-        else:
-            return result[0]
+        return "Others"
 
     def get_image_result_string(self, target_id):
         image_result_list = ["TARGET", target_id]
         return '/'.join([str(elem) for elem in image_result_list])
-
-    def request_photo_from_rpi(self):
-        self.send_message_to_rpi(self.get_take_photo_string())
-
-    def get_take_photo_string(self):
-        photo_list = ["PHOTO", self.obstacle_id]
-        return '/'.join([str(elem) for elem in photo_list])
 
 if __name__ == "__main__":
     # unit test
@@ -148,6 +113,20 @@ if __name__ == "__main__":
     # Test the receiving image function
     import fastestalgo.tests.images
     image_folder = get_path_to(fastestalgo.tests.images)
+
+    # Send first image only bullseye (so not saved)
+    image_path = image_folder.joinpath("Bullseye.jpg")
+    with Image.open(image_path) as image:
+        image.load()
+    data_dict = {"image": image}
+    X.on_receive_image_taken_message(data_dict)
+
+    # Send first image only bullseye (so not saved)
+    image_path = image_folder.joinpath("Bullseye.jpg")
+    with Image.open(image_path) as image:
+        image.load()
+    data_dict = {"image": image}
+    X.on_receive_image_taken_message(data_dict)
 
     # Send first image only bullseye (so not saved)
     image_path = image_folder.joinpath("Bullseye.jpg")
@@ -175,5 +154,11 @@ if __name__ == "__main__":
     with Image.open(image_path2) as image2:
         image2.load()
     data_dict2 = {"image": image2}
+    X.on_receive_image_taken_message(data_dict2)
 
+    # Send second image (predict on finish should be called after this)
+    image_path2 = image_folder.joinpath("right_arrow.jpg")
+    with Image.open(image_path2) as image2:
+        image2.load()
+    data_dict2 = {"image": image2}
     X.on_receive_image_taken_message(data_dict2)
