@@ -94,6 +94,9 @@ class Week9Task:
     def check_infer_result(self, infer_result):
         if infer_result == "Nothing detected":
             return "Others"
+        elif type(infer_result) != list:
+            print(f"Strange behaviour from imagerec. Infer result: {infer_result}. Neither a list nor \"Nothing detected\" string")
+            return "Others"
 
         for result in infer_result:
             if result == "Left" or result == "Right":
@@ -109,6 +112,27 @@ if __name__ == "__main__":
     # unit test
     constants.WIFI_IP = constants.TEST_IP
     X = Week9Task()
+
+    # Test the check infer result
+    infer_result = ["Left"]
+    label = X.check_infer_result(infer_result)
+    assert label == "Left"
+
+    infer_result = ["A", "Right"]
+    label = X.check_infer_result(infer_result)
+    assert label == "Right"
+
+    infer_result = "Nothing detected"
+    label = X.check_infer_result(infer_result)
+    assert label == "Others"
+
+    infer_result = ["A", "One", "Two"]
+    label = X.check_infer_result(infer_result)
+    assert label == "Others"
+
+    infer_result = "Invalid string"
+    label = X.check_infer_result(infer_result)
+    assert label == "Others"
 
     # Test the receiving image function
     import fastestalgo.tests.images
