@@ -10,5 +10,7 @@ setup(name='mdpalgo',
         'networkx',
         'parse',
         'numpy',
+        'imagerec',
+        'opencv-python'
       ]
      )
