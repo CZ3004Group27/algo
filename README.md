@@ -5,6 +5,7 @@
 In the root folder containing `setup.py` file, run
 
 ```sh
+pip install -r requirements.txt
 pip install -e .
 ```
 
