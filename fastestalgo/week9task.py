@@ -46,6 +46,7 @@ class Week9Task:
     def on_receive_image_taken_message(self, data_dict: dict):
         image = data_dict["image"]
         infer_result = infer(image)
+        print("Infer result:", infer_result)
 
         target_id = self.check_infer_result(infer_result)
         print("Image label:", target_id)
