@@ -1,5 +1,5 @@
 """
-Testing Algorithm Socket Only - Not used in production.
+Algorithm Socket to connect with RPi.
 """
 import socket
 import struct
