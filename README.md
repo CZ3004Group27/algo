@@ -48,4 +48,3 @@ The "obstacle" model:
 
 - Physical size is identical to size on grid (1x1) (10cm x 10cm)
 - Obstacle border given for astar path planning is about 20cm (2 cells away)
-- Obstacle border given for hardcoded shortest path is about 10cm (1 cell away)

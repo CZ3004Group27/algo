@@ -90,3 +90,6 @@ dmypy.json
 mdpalgo/images/*.jpg
 !mdpalgo/images/img_1.jpg
 fastestalgo/images/*.jpg
+
+# jupyter notebooks checkpoints
+**/.ipynb_checkpoints
