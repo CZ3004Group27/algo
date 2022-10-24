@@ -62,9 +62,9 @@ we did not fork the repo, but we tried to keep the commit history intact.
 We have contributed significantly, especially on the following aspects:
 
 1. Fix the path planning algorithm: the A star algorithm in the previous repo
-   does not immediately generate a sequence of feasible movements, but an
+   did not immediately generate a sequence of feasible movements, but an
    idealised path for a holonomic robot, and converted to the actual path using
-   a lot of hardcoding. Lots of bugs in the actual path, and the car may crash
+   a lot of hardcoding. Lots of bugs in the actual path, and the car sometimes crashed
    into the obstacle. We have completely revamped the A start path planning
    algorithm to immediately generate a sequence of feasible movements, with no
    collision in the simulator.
