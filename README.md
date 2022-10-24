@@ -54,9 +54,12 @@ The "obstacle" model:
 
 ## References
 
-This repo is based upon [a previous
-repo](https://github.com/CZ3004-Group-12/mdp-algorithm) working on the same
-project. We have contributed significantly, especially on the following aspects:
+This repo is based upon a previous
+repo: https://github.com/CZ3004-Group-12/mdp-algorithm working on the same
+project in the past. Having to keep the developments private during CZ3004 course,
+we did not fork the repo, but we tried to keep the commit history intact.
+
+We have contributed significantly, especially on the following aspects:
 
 1. Fix the path planning algorithm: the A star algorithm in the previous repo
    does not immediately generate a sequence of feasible movements, but an
